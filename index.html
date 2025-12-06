@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>Supabase TblSpace 測試頁面</title>
+  <title>Supabase TblSpace 查詢</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
@@ -61,7 +61,20 @@
     thead {
       background: #f0f0f0;
     }
-    th, td {
+    /* 排序功能相關的樣式 */
+    th {
+      padding: 8px 10px;
+      border-bottom: 1px solid #eee;
+      font-size: 0.9rem;
+      text-align: left;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    th:hover {
+      background-color: #e0e0e0;
+    }
+    td {
       padding: 8px 10px;
       border-bottom: 1px solid #eee;
       font-size: 0.9rem;
@@ -70,8 +83,22 @@
     tr:last-child td {
       border-bottom: none;
     }
-    .no-data {
-      padding: 10px;
+    /* 排序提示文字的樣式 */
+    .sort-hint {
+      font-size: 0.8em;
+      color: #007bff;
+      margin-left: 5px;
+      font-weight: normal;
+    }
+    
+    /* 連結樣式，讓使用者知道這是可點擊的連結 */
+    td a {
+      color: #007bff;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    td a:hover {
+      color: #0056b3;
     }
   </style>
 </head>
@@ -81,15 +108,13 @@
   <div id="status">狀態：準備連線至 Supabase…</div>
   <div id="error"></div>
 
-  <!-- 🔍 搜尋區：輸入空間名稱 -->
   <div class="search-bar">
-    <label for="search-input">請輸入空間名稱：</label>
-    <input type="text" id="search-input" placeholder="例如：會議室" />
+    <label for="search-input">請輸入空間名稱、編號或圖片編號：</label>
+    <input type="text" id="search-input" placeholder="例如：會議室, A102 或 22C-2" />
     <button id="search-btn">搜尋</button>
-    <button id="reset-btn">顯示前 10 筆</button>
+    <button id="reset-btn">顯示前 10 筆</button> 
   </div>
 
-  <!-- 資料表格 -->
   <table id="space-table" style="display:none;">
     <thead>
       <tr id="table-head-row"></tr>
@@ -97,32 +122,61 @@
     <tbody id="space-tbody"></tbody>
   </table>
 
-  <!-- 1. 先載入存放 URL 與 Key 的 config.js（路徑與檔名請確認） -->
   <script src="./config.js"></script>
 
-  <!-- 2. 載入 Supabase JS SDK (v2, CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
-  <!-- 3. 主程式：建立連線、查詢 TblSpace、顯示結果 -->
   <script>
     // 檢查 config.js 是否正確載入
     if (typeof SUPABASE_URL === "undefined" || typeof SUPABASE_ANON_KEY === "undefined") {
       document.getElementById("status").textContent = "狀態：無法找到 SUPABASE_URL 或 SUPABASE_ANON_KEY";
-      document.getElementById("error").textContent =
-        "請確認 config.js 是否在同一個資料夾，且變數名稱正確。";
+      document.getElementById("error").textContent = "請確認 config.js 是否在同一個資料夾。";
     } else {
       document.getElementById("status").textContent = "狀態：正在連線至 Supabase…";
 
-      // 建立 supabase client（v2 寫法）
+      // 建立 supabase client
       const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      // 共用函式：把資料顯示成表格（動態依欄位自動產生 7 欄）
+      let currentData = [];
+      let sortConfig = { key: null, direction: 1 };
+
+      // 【核心功能】檢查圖片並更新儲存格的函式
+      // 這個函式會非同步地檢查檔案是否存在，並在成功時更新表格
+      function checkAndLinkImage(targetTd, text, picNo) {
+        const pngPath = `TCUMAP/${picNo}.png`;
+        const jpgPath = `TCUMAP/${picNo}.jpg`;
+
+        // 1. 先嘗試載入 PNG
+        const imgPng = new Image();
+        imgPng.src = pngPath;
+
+        imgPng.onload = function() {
+          // PNG 存在！將 td 內容更新為指向 PNG 的連結
+          targetTd.innerHTML = `<a href="${pngPath}" target="_blank" title="查看平面圖 (${picNo}.png)">${text}</a>`;
+        };
+
+        imgPng.onerror = function() {
+          // PNG 失敗，接著嘗試載入 JPG
+          const imgJpg = new Image();
+          imgJpg.src = jpgPath;
+          
+          imgJpg.onload = function() {
+             // JPG 存在！將 td 內容更新為指向 JPG 的連結
+             targetTd.innerHTML = `<a href="${jpgPath}" target="_blank" title="查看平面圖 (${picNo}.jpg)">${text}</a>`;
+          };
+          
+          imgJpg.onerror = function() {
+             // 兩者都不存在，什麼都不做，保持原本的純文字
+          };
+        };
+      }
+      
+      // 共用函式：把資料顯示成表格
       function renderTable(data) {
         const table = document.getElementById("space-table");
         const theadRow = document.getElementById("table-head-row");
         const tbody = document.getElementById("space-tbody");
 
-        // 先清空
         theadRow.innerHTML = "";
         tbody.innerHTML = "";
 
@@ -131,22 +185,53 @@
           return;
         }
 
-        // 由第一筆資料自動取得所有欄位名稱
         const columns = Object.keys(data[0]);
 
-        // 產生表頭
+        // 產生表頭 (th)
         columns.forEach(col => {
           const th = document.createElement("th");
-          th.textContent = col;
+          let displayText = col;
+          
+          if (sortConfig.key === col) {
+            // 判斷排序方向，加入文字提示
+            if (sortConfig.direction === 1) {
+              displayText += `<span class="sort-hint">▲ (由小到大)</span>`;
+            } else {
+              displayText += `<span class="sort-hint">▼ (由大到小)</span>`;
+            }
+          }
+          th.innerHTML = displayText;
+          th.onclick = () => { handleSort(col); };
           theadRow.appendChild(th);
         });
 
-        // 產生每一列資料
+        // 產生每一列資料 (td)
         data.forEach(row => {
           const tr = document.createElement("tr");
           columns.forEach(col => {
             const td = document.createElement("td");
-            td.textContent = row[col] ?? "";
+            const cellValue = row[col] ?? "";
+
+            // ---------------------------------------------------
+            // 【核心邏輯】 SpaceName 欄位處理
+            // ---------------------------------------------------
+            if (col === "SpaceName") {
+                // 1. 預設先放入純文字，避免無圖片時有超連結
+                td.textContent = cellValue;
+
+                const picNo = row.PicNo; 
+                
+                // 2. 如果有 PicNo，啟動背景檢查
+                if (picNo && picNo.trim() !== "") {
+                    // 呼叫檢查函式，該函式會非同步地檢查並在成功時將 td 內容轉為連結
+                    checkAndLinkImage(td, cellValue, picNo);
+                }
+            } else {
+                // 其他欄位，只顯示文字
+                td.textContent = cellValue;
+            }
+            // ---------------------------------------------------
+
             tr.appendChild(td);
           });
           tbody.appendChild(tr);
@@ -155,24 +240,54 @@
         table.style.display = "table";
       }
 
-      // 載入資料：如果有 keyword，做模糊搜尋；否則顯示前 10 筆
-      async function loadSpaces(keyword = "") {
+      // 排序處理函式
+      function handleSort(key) {
+        if (sortConfig.key === key) {
+          sortConfig.direction *= -1;
+        } else {
+          sortConfig.key = key;
+          sortConfig.direction = 1; 
+        }
+
+        currentData.sort((a, b) => {
+          let valA = a[key];
+          let valB = b[key];
+
+          if (valA == null) return 1;
+          if (valB == null) return -1;
+
+          if (!isNaN(valA) && !isNaN(valB)) {
+            return (Number(valA) - Number(valB)) * sortConfig.direction;
+          }
+          return String(valA).localeCompare(String(valB)) * sortConfig.direction;
+        });
+
+        renderTable(currentData);
+      }
+
+      // 載入資料函式
+      async function loadSpaces(keyword = "", limitCount = 0) { 
         const statusEl = document.getElementById("status");
         const errorEl = document.getElementById("error");
 
         statusEl.textContent = "狀態：資料讀取中…";
         errorEl.textContent = "";
 
-        let query = supabaseClient
-          .from("TblSpace")
-          .select("*");   // 取出所有欄位（7 個欄位）
+        let query = supabaseClient.from("TblSpace").select("*");
+        const trimmedKeyword = keyword.trim();
 
-        if (keyword && keyword.trim() !== "") {
-          // 模糊搜尋：SpaceName 欄位包含關鍵字（不分大小寫）
-          query = query.ilike("SpaceName", `%${keyword.trim()}%`);
-        } else {
-          // 沒有關鍵字時，只顯示前 10 筆
-          query = query.limit(10);
+        if (trimmedKeyword !== "") {
+          // 使用 OR 邏輯同時搜尋 SpaceName, SpaceNo, 和 PicNo
+          const orFilter = 
+            `SpaceName.ilike.%${trimmedKeyword}%,` + 
+            `SpaceNo.ilike.%${trimmedKeyword}%,` +
+            `PicNo.ilike.%${trimmedKeyword}%`; 
+            
+          query = query.or(orFilter);
+        }
+
+        if (limitCount > 0) {
+            query = query.limit(limitCount);
         }
 
         const { data, error } = await query;
@@ -180,48 +295,43 @@
         if (error) {
           statusEl.textContent = "狀態：讀取失敗";
           errorEl.textContent = "錯誤訊息：\n" + error.message;
-          console.error("Supabase error:", error);
-          renderTable([]); // 清空表格
+          renderTable([]);
           return;
         }
 
-        statusEl.textContent =
-          "狀態：讀取成功，共取得 " + (data ? data.length : 0) + " 筆資料";
+        statusEl.textContent = "狀態：讀取成功，共取得 " + (data ? data.length : 0) + " 筆資料";
 
         if (!data || data.length === 0) {
           renderTable([]);
-          const tbody = document.getElementById("space-tbody");
-          const theadRow = document.getElementById("table-head-row");
-          theadRow.innerHTML = "";
-          tbody.innerHTML = "";
-          const table = document.getElementById("space-table");
-          table.style.display = "none";
           return;
         }
 
-        renderTable(data);
+        currentData = data;
+        sortConfig = { key: null, direction: 1 };
+        renderTable(currentData);
       }
 
-      // 一載入頁面就先顯示前 10 筆
-      loadSpaces();
+      // ------------------------------------
+      // 事件綁定
+      // ------------------------------------
 
-      // 綁定搜尋按鈕
+      // 初始載入：顯示前 10 筆
+      loadSpaces("", 10);
+
       document.getElementById("search-btn").addEventListener("click", () => {
         const keyword = document.getElementById("search-input").value;
-        loadSpaces(keyword);
+        loadSpaces(keyword, 0); 
       });
 
-      // 綁定「顯示前 10 筆」按鈕
       document.getElementById("reset-btn").addEventListener("click", () => {
-        document.getElementById("search-input").value = "";
-        loadSpaces("");
+        const keyword = document.getElementById("search-input").value;
+        loadSpaces(keyword, 10);
       });
 
-      // 讓使用者按 Enter 也能搜尋
       document.getElementById("search-input").addEventListener("keyup", (e) => {
         if (e.key === "Enter") {
           const keyword = e.target.value;
-          loadSpaces(keyword);
+          loadSpaces(keyword, 0); 
         }
       });
     }
