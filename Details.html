@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>空間詳細資料與平面圖</title>
+    <title>詳細資訊</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         body {
@@ -20,11 +20,31 @@
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
-        h1 {
-            color: #007bff;
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             border-bottom: 2px solid #eee;
             padding-bottom: 10px;
             margin-top: 0;
+        }
+        h1 {
+            color: #007bff;
+            margin: 0;
+        }
+        #back-button {
+            padding: 8px 15px;
+            font-size: 1rem;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+        #back-button:hover {
+            background-color: #0056b3;
         }
         .detail-item {
             display: flex;
@@ -40,7 +60,6 @@
         .detail-value {
             flex-grow: 1;
         }
-        /* 保持圖片樣式 */
         #space-image {
             width: 100%;
             max-width: 600px;
@@ -52,9 +71,8 @@
             margin-left: auto;
             margin-right: auto;
         }
-        /* 圖片容器需要設定為相對定位，以便之後疊加紅框 */
         #image-container {
-            position: relative; /* 新增這一行 */
+            position: relative;
             text-align: center;
             margin-bottom: 20px;
         }
@@ -62,21 +80,24 @@
             color: #b00020;
             font-weight: bold;
         }
-        
-        /* 紅框標註的樣式 (為下一步定位功能預留) */
+        /* 紅框標註的樣式 (預留給未來定位功能) */
         #highlight-box {
             position: absolute;
             border: 4px solid red;
-            background-color: rgba(255, 0, 0, 0.3); /* 半透明紅色 */
+            background-color: rgba(255, 0, 0, 0.3);
             box-sizing: border-box;
-            display: none; /* 預設隱藏 */
+            display: none;
             z-index: 10;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 id="detail-title">空間詳細資料載入中...</h1>
+        
+        <div class="header-container">
+            <h1 id="detail-title">空間詳細資料載入中...</h1>
+            <button id="back-button">🔙 返回列表</button> 
+        </div>
 
         <div id="details-content">
             <p id="error-message"></p>
@@ -109,16 +130,15 @@
             <div id="image-container">
                 <div id="highlight-box"></div> 
             </div>
-            
-            </div>
+        </div>
     </div>
-
+    
     <script src="./config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
     <script>
         // ---------------------------------------------------
-        // 資料對應表 (與 index.html 相同)
+        // 資料對應表
         // ---------------------------------------------------
         const CAMPUS_MAP = {
             '1': '中央校區(校本部)',
@@ -148,67 +168,69 @@
         // ---------------------------------------------------
         function renderDetails(data) {
             const spaceName = String(data.SpaceName ?? "").trim();
+            const spaceNo = String(data.SpaceNo ?? "").trim();
+
             document.getElementById("detail-title").textContent = `${spaceName} - 詳細資料`;
             document.getElementById("space-name").textContent = spaceName;
 
             // 處理地點相關資訊
             document.getElementById("campus-name").textContent = CAMPUS_MAP[String(data.CampusNo ?? "").trim()] || data.CampusNo;
-            document.getElementById("space-no").textContent = data.SpaceNo;
+            document.getElementById("space-no").textContent = spaceNo;
             document.getElementById("building-no").textContent = BUILDING_MAP[String(data.BuildingNo ?? "").trim()] || data.BuildingNo;
 
             const floorValue = String(data.FloorNo ?? "").trim();
             document.getElementById("floor-no").textContent = (floorValue !== "" && !isNaN(Number(floorValue))) ? `${floorValue} 樓` : floorValue;
             
             
+            // 💡 關鍵：設定返回按鈕的連結
+            const backButton = document.getElementById("back-button");
+            if (spaceNo) {
+                // 將當前的 SpaceNo 作為 highlight 參數傳回給 index.html
+                backButton.onclick = () => {
+                    window.location.href = `index.html?highlight=${spaceNo}`;
+                };
+            } else {
+                // 如果沒有 SpaceNo，則退回上一頁
+                backButton.onclick = () => window.history.back();
+            }
+
             // ---------------------------------------------------
-            // 處理圖片顯示
+            // 處理圖片顯示 (與先前邏輯相同)
             // ---------------------------------------------------
             const picNo = String(data.PicNo ?? "").trim();
             const imgContainer = document.getElementById("image-container");
             const highlightBox = document.getElementById("highlight-box");
 
-            // 預設將紅框隱藏
             highlightBox.style.display = 'none';
 
             if (picNo !== "") {
                 const pngPath = `TCUMAP/${picNo}.png`;
                 const jpgPath = `TCUMAP/${picNo}.jpg`;
                 
-                // 嘗試載入 .png 圖片
+                const loadAndRenderImage = (imageElement) => {
+                    imgContainer.innerHTML = '';
+                    imgContainer.appendChild(imageElement);
+                    imgContainer.appendChild(highlightBox); 
+                };
+
                 const imgPng = new Image();
                 imgPng.id = "space-image";
                 imgPng.alt = `${spaceName} 平面圖`;
                 imgPng.src = pngPath;
 
-                imgPng.onload = function() {
-                    imgContainer.innerHTML = '';
-                    imgContainer.appendChild(imgPng);
-                    imgContainer.appendChild(highlightBox); // 重新加入紅框元素，確保在圖片上方
-                    // 💡 注意：接下來我們需要在這裡呼叫一個函式來繪製紅框
-                    // drawHighlightBox(data.Coordinates, imgPng); 
-                };
+                imgPng.onload = () => loadAndRenderImage(imgPng);
 
-                imgPng.onerror = function() {
-                    // PNG 不存在，嘗試載入 .jpg 圖片
+                imgPng.onerror = () => {
                     const imgJpg = new Image();
                     imgJpg.id = "space-image";
                     imgJpg.alt = `${spaceName} 平面圖`;
                     imgJpg.src = jpgPath;
                     
-                    imgJpg.onload = function() {
-                        imgContainer.innerHTML = '';
-                        imgContainer.appendChild(imgJpg);
-                        imgContainer.appendChild(highlightBox); // 重新加入紅框元素
-                        // 💡 注意：接下來我們需要在這裡呼叫一個函式來繪製紅框
-                        // drawHighlightBox(data.Coordinates, imgJpg); 
-                    };
+                    imgJpg.onload = () => loadAndRenderImage(imgJpg);
                     
-                    imgJpg.onerror = function() {
-                        // 兩者都不存在
+                    imgJpg.onerror = () => {
                         imgContainer.innerHTML = `<p>找不到與圖片編號 <strong>${picNo}</strong> 相關的平面圖。</p>`;
                     };
-                    
-                    imgContainer.innerHTML = ''; 
                 };
 
             } else {
