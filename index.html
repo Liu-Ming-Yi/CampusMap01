@@ -1,387 +1,407 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <title>Supabase TblSpace 查詢</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      margin: 20px;
-      padding: 0;
-      background-color: #f7f7f7;
-    }
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 10px;
-    }
-    #status {
-      margin: 10px 0;
-      color: #555;
-    }
-    #error {
-      color: #b00020;
-      margin: 10px 0;
-      white-space: pre-wrap;
-    }
-    .search-bar {
-      margin: 10px 0 20px 0;
-    }
-    .search-bar label {
-      margin-right: 8px;
-      font-weight: 600;
-    }
-    .search-bar input {
-      padding: 6px 8px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      min-width: 200px;
-    }
-    .search-bar button {
-      padding: 6px 12px;
-      margin-left: 6px;
-      border-radius: 4px;
-      border: 1px solid #007bff;
-      background-color: #007bff;
-      color: #fff;
-      cursor: pointer;
-    }
-    .search-bar button:hover {
-      opacity: 0.9;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    }
-    thead {
-      background: #f0f0f0;
-    }
-    /* 排序功能相關的樣式 */
-    th {
-      padding: 8px 10px;
-      border-bottom: 1px solid #eee;
-      font-size: 0.9rem;
-      text-align: left;
-      cursor: pointer;
-      user-select: none;
-      white-space: nowrap;
-    }
-    th:hover {
-      background-color: #e0e0e0;
-    }
-    td {
-      padding: 8px 10px;
-      border-bottom: 1px solid #eee;
-      font-size: 0.9rem;
-      text-align: left;
-    }
-    tr:last-child td {
-      border-bottom: none;
-    }
-    /* 排序提示文字的樣式 */
-    .sort-hint {
-      font-size: 0.8em;
-      color: #007bff;
-      margin-left: 5px;
-      font-weight: normal;
-    }
+    <meta charset="UTF-8" />
+    <title>Supabase TblSpace 查詢</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     
-    /* 連結樣式，讓使用者知道這是可點擊的連結 */
-    td a {
-      color: #007bff;
-      text-decoration: none; 
-      cursor: pointer;
-      font-weight: 500;
-    }
-    td a:hover {
-      color: #0056b3;
-      text-decoration: underline; 
-    }
-  </style>
+    <link rel="stylesheet" href="./RWD/style.css" /> 
+    
+    <style>
+        /* 這裡保留您原本的樣式，適用於桌機和一般排版 */
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+                sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f7f7f7;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        #status {
+            margin: 10px 0;
+            color: #555;
+        }
+        #error {
+            color: #b00020;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .search-bar {
+            margin: 10px 0 20px 0;
+        }
+        .search-bar label {
+            margin-right: 8px;
+            font-weight: 600;
+        }
+        .search-bar input {
+            padding: 6px 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            min-width: 200px;
+        }
+        .search-bar button {
+            padding: 6px 12px;
+            margin-left: 6px;
+            border-radius: 4px;
+            border: 1px solid #007bff;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+        }
+        .search-bar button:hover {
+            opacity: 0.9;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        thead {
+            background: #f0f0f0;
+        }
+        /* 排序功能相關的樣式 */
+        th {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+            text-align: left;
+            cursor: pointer; /* 確保有鼠標提示 */
+            user-select: none;
+            white-space: nowrap;
+            transition: background-color 0.2s; /* 增加過渡效果 */
+        }
+        th:hover {
+            background-color: #d8e6f7; /* 改變懸停顏色 */
+        }
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        /* 排序提示文字的樣式 */
+        .sort-hint {
+            font-size: 0.8em;
+            color: #999; /* 使用淺灰色作為預設提示 */
+            margin-left: 5px;
+            font-weight: normal;
+        }
+        
+        /* 連結樣式，讓使用者知道這是可點擊的連結 */
+        td a {
+            color: #007bff;
+            text-decoration: none; 
+            cursor: pointer;
+            font-weight: 500;
+        }
+        td a:hover {
+            color: #0056b3;
+            text-decoration: underline; 
+        }
+    </style>
 </head>
 <body>
-  <h1>Supabase 測試：TblSpace 查詢</h1>
+    <h1>Supabase 測試：TblSpace 查詢</h1>
 
-  <div id="status">狀態：準備連線至 Supabase…</div>
-  <div id="error"></div>
+    <div id="status">狀態：準備連線至 Supabase…</div>
+    <div id="error"></div>
 
-  <div class="search-bar">
-    <label for="search-input">請輸入空間名稱、編號或圖片編號：</label>
-    <input type="text" id="search-input" placeholder="例如：會議室, A102" />
-    <button id="search-btn">搜尋</button>
-    <button id="reset-btn">顯示前 10 筆</button>  
-  </div>
+    <div class="search-bar">
+        <label for="search-input">請輸入空間名稱、編號或圖片編號：</label>
+        <input type="text" id="search-input" placeholder="例如：會議室, A102" />
+        <button id="search-btn">搜尋</button>
+        <button id="reset-btn">顯示前 10 筆</button>  
+    </div>
 
-  <table id="space-table" style="display:none;">
-    <thead>
-      <tr id="table-head-row"></tr>
-    </thead>
-    <tbody id="space-tbody"></tbody>
-  </table>
+    <table id="space-table" style="display:none;">
+        <thead>
+            <tr id="table-head-row"></tr>
+        </thead>
+        <tbody id="space-tbody"></tbody>
+    </table>
 
-  <script src="./config.js"></script>
+    <script src="./config.js"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
-  <script>
-    const statusEl = document.getElementById("status");
-    const errorEl = document.getElementById("error");
+    <script>
+        const statusEl = document.getElementById("status");
+        const errorEl = document.getElementById("error");
 
-    if (typeof SUPABASE_URL === "undefined" || typeof SUPABASE_ANON_KEY === "undefined") {
-      if (statusEl) statusEl.textContent = "狀態：無法找到 SUPABASE_URL 或 SUPABASE_ANON_KEY";
-      if (errorEl) errorEl.textContent = "請確認 config.js 是否在同一個資料夾。";
-    } else {
-      if (statusEl) statusEl.textContent = "狀態：正在連線至 Supabase…";
-
-      const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-      let currentData = [];
-      let sortConfig = { key: null, direction: 1 };
-
-      const EXCLUDED_COLUMNS = ['sID', 'PicNo']; 
-      
-      const COLUMN_DISPLAY_NAMES = {
-        'SpaceNo': '空間編號',
-        'SpaceName': '空間名稱', // 移除提示文字，連結會在後續非同步加入
-        'CampusNo': '校區名稱',
-        'BuildingNo': '所屬樓棟',
-        'FloorNo': '所在樓層',
-      };
-
-      const CAMPUS_MAP = {
-        '1': '中央校區(校本部)',
-        '2': '介仁校區(人社院)',
-        '3': '建國校區(慈科大)'
-      };
-
-      const BUILDING_MAP = {
-        'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟',
-        'G': 'G 棟', 'H': 'H 棟', 'I': 'I 棟', 'J': 'J 棟', 'K': 'K 棟', 'L': 'L 棟',
-        'M': 'M 棟', 'N': 'N 棟', 'O': 'O 棟', 'P': 'P 棟', 'Q': 'Q 棟', 'R': 'R 棟',
-        'S': 'S 棟', 'T': 'T 棟', 'U': 'U 棟', 'V': 'V 棟', 'W': 'W 棟', 'X': 'X 棟',
-        'Y': 'Y 棟', 'Z': 'Z 棟',
-        '01': '行政大樓',
-      };
-      
-      /**
-       * 圖片檢查函式：非同步檢查指定 PicNo 的圖片是否存在。
-       * @param {string} picNo - 圖片編號
-       * @returns {Promise<string|null>} - 返回圖片的路徑 (png 或 jpg)，若不存在則返回 null。
-       */
-      function checkImageExists(picNo) {
-          return new Promise((resolve) => {
-              if (!picNo || picNo.trim() === "") {
-                  resolve(null);
-                  return;
-              }
-              const pngPath = `TCUMAP/${picNo}.png`;
-              const jpgPath = `TCUMAP/${picNo}.jpg`;
-
-              const checkPng = new Image();
-              checkPng.onload = () => resolve(pngPath);
-              checkPng.onerror = () => {
-                  const checkJpg = new Image();
-                  checkJpg.onload = () => resolve(jpgPath);
-                  checkJpg.onerror = () => resolve(null); // PNG 和 JPG 都不存在
-                  checkJpg.src = jpgPath;
-              };
-              checkPng.src = pngPath;
-          });
-      }
-
-      // 共用函式：把資料顯示成表格
-      async function renderTable(data) { // 設為 async 才能等待圖片檢查結果
-        const table = document.getElementById("space-table");
-        const theadRow = document.getElementById("table-head-row");
-        const tbody = document.getElementById("space-tbody");
-
-        theadRow.innerHTML = "";
-        tbody.innerHTML = "";
-
-        if (!data || data.length === 0) {
-          if (table) table.style.display = "none";
-          return;
-        }
-
-        const allColumns = Object.keys(data[0]);
-        const visibleColumns = allColumns.filter(col => !EXCLUDED_COLUMNS.includes(col));
-
-        // 產生表頭 (th) - 與之前邏輯相同
-        visibleColumns.forEach(col => {
-          const th = document.createElement("th");
-          let displayText = COLUMN_DISPLAY_NAMES[col] || col; 
-          
-          if (sortConfig.key === col) {
-            displayText += `<span class="sort-hint">${sortConfig.direction === 1 ? '▲ (由小到大)' : '▼ (由大到小)'}</span>`;
-          }
-          th.innerHTML = displayText;
-          th.onclick = () => { handleSort(col); };
-          if (theadRow) theadRow.appendChild(th);
-        });
-
-        // 產生每一列資料 (td)
-        for (const row of data) {
-          const tr = document.createElement("tr");
-          
-          for (const col of visibleColumns) {
-            const td = document.createElement("td");
-            const cellValue = String(row[col] ?? "").trim();
-
-            if (col === "CampusNo") {
-                td.textContent = CAMPUS_MAP[cellValue] || cellValue; 
-            } else if (col === "BuildingNo") {
-                td.textContent = BUILDING_MAP[cellValue] || cellValue;
-            } else if (col === "FloorNo") { 
-                if (cellValue !== "" && !isNaN(Number(cellValue))) {
-                    td.textContent = cellValue + ' 樓'; 
-                } else {
-                    td.textContent = cellValue;
-                }
-
-            } else if (col === "SpaceName") {
-                td.textContent = cellValue; // 預設顯示純文字
-                
-                const spaceNo = row.SpaceNo;
-                const picNo = row.PicNo; 
-                
-                // 💡 只有當有 PicNo 時才執行圖片檢查
-                if (picNo) {
-                    // 非同步檢查圖片是否存在，檢查完成後才更新儲存格內容
-                    const imagePath = await checkImageExists(picNo); 
-                    
-                    if (imagePath) {
-                        // 圖片存在，轉換為超連結
-                        td.innerHTML = ''; // 清空純文字
-                        
-                        const detailLink = document.createElement('a');
-                        detailLink.href = `Details.html?spaceNo=${encodeURIComponent(spaceNo)}`; 
-                        detailLink.textContent = cellValue; 
-                        detailLink.target = "_blank"; 
-                        detailLink.title = `點擊查看 ${cellValue} 的詳細資料及平面圖`;
-                        
-                        td.appendChild(detailLink);
-                    } else {
-                        // 圖片不存在，維持純文字
-                        td.title = `沒有找到 ${cellValue} 的平面圖`;
-                    }
-                }
-            } else {
-                td.textContent = cellValue;
-            }
-
-            tr.appendChild(td);
-          }
-          if (tbody) tbody.appendChild(tr);
-        }
-
-        if (table) table.style.display = "table";
-      }
-
-      // 排序處理函式 - 邏輯不變
-      function handleSort(key) {
-        if (sortConfig.key === key) {
-          sortConfig.direction *= -1;
+        if (typeof SUPABASE_URL === "undefined" || typeof SUPABASE_ANON_KEY === "undefined") {
+            if (statusEl) statusEl.textContent = "狀態：無法找到 SUPABASE_URL 或 SUPABASE_ANON_KEY";
+            if (errorEl) errorEl.textContent = "請確認 config.js 是否在同一個資料夾。";
         } else {
-          sortConfig.key = key;
-          sortConfig.direction = 1; 
-        }
+            if (statusEl) statusEl.textContent = "狀態：正在連線至 Supabase…";
 
-        currentData.sort((a, b) => {
-          let valA = a[key];
-          let valB = b[key];
+            const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-          if (valA == null) return 1;
-          if (valB == null) return -1;
+            let currentData = [];
+            let sortConfig = { key: null, direction: 1 };
 
-          if (!isNaN(valA) && !isNaN(valB)) {
-            return (Number(valA) - Number(valB)) * sortConfig.direction;
-          }
-          return String(valA).localeCompare(String(valB)) * sortConfig.direction;
-        });
+            const EXCLUDED_COLUMNS = ['sID', 'PicNo']; 
+            
+            const COLUMN_DISPLAY_NAMES = {
+                'SpaceNo': '空間編號',
+                'SpaceName': '空間名稱',
+                'CampusNo': '校區名稱',
+                'BuildingNo': '所屬樓棟',
+                'FloorNo': '所在樓層',
+            };
 
-        // 由於 renderTable 是 async 函式，我們需要用 await 或 .then()
-        renderTable(currentData); 
-      }
+            const CAMPUS_MAP = {
+                '1': '中央校區(校本部)',
+                '2': '介仁校區(人社院)',
+                '3': '建國校區(慈科大)'
+            };
 
-      // 載入資料函式 - 邏輯不變
-      async function loadSpaces(keyword = "", limitCount = 0) { 
-        if (statusEl) statusEl.textContent = "狀態：資料讀取中…";
-        if (errorEl) errorEl.textContent = "";
+            const BUILDING_MAP = {
+                'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟',
+                'G': 'G 棟', 'H': 'H 棟', 'I': 'I 棟', 'J': 'J 棟', 'K': 'K 棟', 'L': 'L 棟',
+                'M': 'M 棟', 'N': 'N 棟', 'O': 'O 棟', 'P': 'P 棟', 'Q': 'Q 棟', 'R': 'R 棟',
+                'S': 'S 棟', 'T': 'T 棟', 'U': 'U 棟', 'V': 'V 棟', 'W': 'W 棟', 'X': 'X 棟',
+                'Y': 'Y 棟', 'Z': 'Z 棟',
+                '01': '行政大樓',
+            };
+            
+            /**
+                * 圖片檢查函式：非同步檢查指定 PicNo 的圖片是否存在。
+                * @param {string} picNo - 圖片編號
+                * @returns {Promise<string|null>} - 返回圖片的路徑 (png 或 jpg)，若不存在則返回 null。
+            */
+            function checkImageExists(picNo) {
+                return new Promise((resolve) => {
+                    if (!picNo || picNo.trim() === "") {
+                        resolve(null);
+                        return;
+                    }
+                    const pngPath = `TCUMAP/${picNo}.png`;
+                    const jpgPath = `TCUMAP/${picNo}.jpg`;
 
-        let query = supabaseClient.from("TblSpace").select("*"); 
-        const trimmedKeyword = keyword.trim();
-
-        if (trimmedKeyword !== "") {
-          const orFilter = 
-            `SpaceName.ilike.%${trimmedKeyword}%,` + 
-            `SpaceNo.ilike.%${trimmedKeyword}%,` +
-            `PicNo.ilike.%${trimmedKeyword}%`; 
-          query = query.or(orFilter);
-        }
-
-        if (limitCount > 0) {
-            query = query.limit(limitCount);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-          if (statusEl) statusEl.textContent = "狀態：讀取失敗";
-          if (errorEl) errorEl.textContent = "錯誤訊息：\n" + error.message;
-          renderTable([]);
-          return;
-        }
-
-        if (statusEl) statusEl.textContent = "狀態：讀取成功，共取得 " + (data ? data.length : 0) + " 筆資料";
-
-        if (!data || data.length === 0) {
-          renderTable([]);
-          return;
-        }
-
-        currentData = data;
-        sortConfig = { key: null, direction: 1 };
-        await renderTable(currentData); // 🚨 確保等待表格渲染完成
-      }
-
-      // ------------------------------------
-      // 事件綁定
-      // ------------------------------------
-      loadSpaces("", 10);
-
-      const searchBtn = document.getElementById("search-btn");
-      const resetBtn = document.getElementById("reset-btn");
-      const searchInput = document.getElementById("search-input");
-
-      if (searchBtn && searchInput) {
-          searchBtn.addEventListener("click", () => {
-            const keyword = searchInput.value;
-            loadSpaces(keyword, 0); 
-          });
-      }
-
-      if (resetBtn && searchInput) {
-          resetBtn.addEventListener("click", () => {
-            searchInput.value = ""; 
-            loadSpaces("", 10); 
-          });
-      }
-
-      if (searchInput) {
-          searchInput.addEventListener("keyup", (e) => {
-            if (e.key === "Enter") {
-              const keyword = e.target.value;
-              loadSpaces(keyword, 0); 
+                    const checkPng = new Image();
+                    checkPng.onload = () => resolve(pngPath);
+                    checkPng.onerror = () => {
+                        const checkJpg = new Image();
+                        checkJpg.onload = () => resolve(jpgPath);
+                        checkJpg.onerror = () => resolve(null); // PNG 和 JPG 都不存在
+                        checkJpg.src = jpgPath;
+                    };
+                    checkPng.src = pngPath;
+                });
             }
-          });
-      }
-    }
-  </script>
+
+            // 共用函式：把資料顯示成表格
+            async function renderTable(data) { // 設為 async 才能等待圖片檢查結果
+                const table = document.getElementById("space-table");
+                const theadRow = document.getElementById("table-head-row");
+                const tbody = document.getElementById("space-tbody");
+
+                theadRow.innerHTML = "";
+                tbody.innerHTML = "";
+
+                if (!data || data.length === 0) {
+                    if (table) table.style.display = "none";
+                    return;
+                }
+
+                const allColumns = Object.keys(data[0]);
+                const visibleColumns = allColumns.filter(col => !EXCLUDED_COLUMNS.includes(col));
+
+                // 產生表頭 (th)
+                visibleColumns.forEach(col => {
+                    const th = document.createElement("th");
+                    let displayText = COLUMN_DISPLAY_NAMES[col] || col; 
+                    
+                    // 檢查是否為當前排序欄位
+                    if (sortConfig.key === col) {
+                        // 如果是：顯示當前的排序方向
+                        const directionText = sortConfig.direction === 1 ? '▲ (由小到大)' : '▼ (由大到小)';
+                        // 使用 <font> 標籤強制覆蓋 .sort-hint 的顏色，使其在當前排序狀態下更突出
+                        displayText += `<span class="sort-hint"><font color="#007bff">${directionText}</font></span>`; 
+                    } else {
+                        // 💡 修正：如果不是排序欄位，則顯示「點擊排序」的提示
+                        displayText += `<span class="sort-hint"> (點擊排序)</span>`;
+                    }
+
+                    th.innerHTML = displayText;
+                    th.onclick = () => { handleSort(col); };
+                    if (theadRow) theadRow.appendChild(th);
+                });
+
+                // 產生每一列資料 (td)
+                for (const row of data) {
+                    const tr = document.createElement("tr");
+                    
+                    for (const col of visibleColumns) {
+                        const td = document.createElement("td");
+                        
+                        // 關鍵：新增 data-label 屬性，供 RWD CSS 呼叫顯示欄位名稱
+                        td.setAttribute('data-label', COLUMN_DISPLAY_NAMES[col] || col); 
+
+                        const cellValue = String(row[col] ?? "").trim();
+
+                        if (col === "CampusNo") {
+                            td.textContent = CAMPUS_MAP[cellValue] || cellValue; 
+                        } else if (col === "BuildingNo") {
+                            td.textContent = BUILDING_MAP[cellValue] || cellValue;
+                        } else if (col === "FloorNo") { 
+                            if (cellValue !== "" && !isNaN(Number(cellValue))) {
+                                td.textContent = cellValue + ' 樓'; 
+                            } else {
+                                td.textContent = cellValue;
+                            }
+
+                        } else if (col === "SpaceName") {
+                            td.textContent = cellValue; // 預設顯示純文字
+                            
+                            const spaceNo = row.SpaceNo;
+                            const picNo = row.PicNo; 
+                            
+                            // 💡 只有當有 PicNo 時才執行圖片檢查
+                            if (picNo) {
+                                // 非同步檢查圖片是否存在，檢查完成後才更新儲存格內容
+                                const imagePath = await checkImageExists(picNo); 
+                                
+                                if (imagePath) {
+                                    // 圖片存在，轉換為超連結
+                                    td.innerHTML = ''; // 清空純文字
+                                    
+                                    const detailLink = document.createElement('a');
+                                    detailLink.href = `Details.html?spaceNo=${encodeURIComponent(spaceNo)}`; 
+                                    detailLink.textContent = cellValue; 
+                                    detailLink.target = "_blank"; 
+                                    detailLink.title = `點擊查看 ${cellValue} 的詳細資料及平面圖`;
+                                    
+                                    td.appendChild(detailLink);
+                                } else {
+                                    // 圖片不存在，維持純文字
+                                    td.title = `沒有找到 ${cellValue} 的平面圖`;
+                                }
+                            }
+                        } else {
+                            td.textContent = cellValue;
+                        }
+
+                        tr.appendChild(td);
+                    }
+                    if (tbody) tbody.appendChild(tr);
+                }
+
+                if (table) table.style.display = "table";
+            }
+
+            // 排序處理函式 - 邏輯不變
+            function handleSort(key) {
+                if (sortConfig.key === key) {
+                    sortConfig.direction *= -1;
+                } else {
+                    sortConfig.key = key;
+                    sortConfig.direction = 1; 
+                }
+
+                currentData.sort((a, b) => {
+                    let valA = a[key];
+                    let valB = b[key];
+
+                    if (valA == null) return 1;
+                    if (valB == null) return -1;
+
+                    if (!isNaN(valA) && !isNaN(valB)) {
+                        return (Number(valA) - Number(valB)) * sortConfig.direction;
+                    }
+                    return String(valA).localeCompare(String(valB)) * sortConfig.direction;
+                });
+
+                // 由於 renderTable 是 async 函式，我們需要用 await 或 .then()
+                renderTable(currentData); 
+            }
+
+            // 載入資料函式 - 邏輯不變
+            async function loadSpaces(keyword = "", limitCount = 0) { 
+                if (statusEl) statusEl.textContent = "狀態：資料讀取中…";
+                if (errorEl) errorEl.textContent = "";
+
+                let query = supabaseClient.from("TblSpace").select("*"); 
+                const trimmedKeyword = keyword.trim();
+
+                if (trimmedKeyword !== "") {
+                    const orFilter = 
+                        `SpaceName.ilike.%${trimmedKeyword}%,` + 
+                        `SpaceNo.ilike.%${trimmedKeyword}%,` +
+                        `PicNo.ilike.%${trimmedKeyword}%`; 
+                    query = query.or(orFilter);
+                }
+
+                if (limitCount > 0) {
+                    query = query.limit(limitCount);
+                }
+
+                const { data, error } = await query;
+
+                if (error) {
+                    if (statusEl) statusEl.textContent = "狀態：讀取失敗";
+                    if (errorEl) errorEl.textContent = "錯誤訊息：\n" + error.message;
+                    renderTable([]);
+                    return;
+                }
+
+                if (statusEl) statusEl.textContent = "狀態：讀取成功，共取得 " + (data ? data.length : 0) + " 筆資料";
+
+                if (!data || data.length === 0) {
+                    renderTable([]);
+                    return;
+                }
+
+                currentData = data;
+                
+                // 修正：當重新載入資料時，取消上次的排序狀態，避免「點擊排序」提示被覆蓋。
+                // 如果需要維持上次的排序，則不需要重置這行。
+                sortConfig = { key: null, direction: 1 }; 
+                
+                await renderTable(currentData); // 確保等待表格渲染完成
+            }
+
+            // ------------------------------------
+            // 事件綁定
+            // ------------------------------------
+            loadSpaces("", 10);
+
+            const searchBtn = document.getElementById("search-btn");
+            const resetBtn = document.getElementById("reset-btn");
+            const searchInput = document.getElementById("search-input");
+
+            if (searchBtn && searchInput) {
+                searchBtn.addEventListener("click", () => {
+                    const keyword = searchInput.value;
+                    loadSpaces(keyword, 0); 
+                });
+            }
+
+            if (resetBtn && searchInput) {
+                resetBtn.addEventListener("click", () => {
+                    searchInput.value = ""; 
+                    loadSpaces("", 10); 
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener("keyup", (e) => {
+                    if (e.key === "Enter") {
+                        const keyword = e.target.value;
+                        loadSpaces(keyword, 0); 
+                    }
+                });
+            }
+        }
+    </script>
 </body>
 </html>
-
