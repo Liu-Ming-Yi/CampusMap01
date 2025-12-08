@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <title>Supabase TblSpace 查詢</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    
-    <link rel="stylesheet" href="./RWD/style.css" /> 
+    <meta name="viewport" content="width=device-width, initial-scale=1" /> 
     
     <style>
         /* 這裡保留您原本的樣式，適用於桌機和一般排版 */
@@ -228,7 +226,7 @@
                         // 使用 <font> 標籤強制覆蓋 .sort-hint 的顏色，使其在當前排序狀態下更突出
                         displayText += `<span class="sort-hint"><font color="#007bff">${directionText}</font></span>`; 
                     } else {
-                        // 💡 修正：如果不是排序欄位，則顯示「點擊排序」的提示
+                        // 如果不是排序欄位，則顯示「點擊排序」的提示
                         displayText += `<span class="sort-hint"> (點擊排序)</span>`;
                     }
 
@@ -244,9 +242,8 @@
                     for (const col of visibleColumns) {
                         const td = document.createElement("td");
                         
-                        // 關鍵：新增 data-label 屬性，供 RWD CSS 呼叫顯示欄位名稱
-                        td.setAttribute('data-label', COLUMN_DISPLAY_NAMES[col] || col); 
-
+                        // ❌ 移除：td.setAttribute('data-label', COLUMN_DISPLAY_NAMES[col] || col); (RWD 相關)
+                        
                         const cellValue = String(row[col] ?? "").trim();
 
                         if (col === "CampusNo") {
@@ -321,7 +318,6 @@
                     return String(valA).localeCompare(String(valB)) * sortConfig.direction;
                 });
 
-                // 由於 renderTable 是 async 函式，我們需要用 await 或 .then()
                 renderTable(currentData); 
             }
 
@@ -362,9 +358,6 @@
                 }
 
                 currentData = data;
-                
-                // 修正：當重新載入資料時，取消上次的排序狀態，避免「點擊排序」提示被覆蓋。
-                // 如果需要維持上次的排序，則不需要重置這行。
                 sortConfig = { key: null, direction: 1 }; 
                 
                 await renderTable(currentData); // 確保等待表格渲染完成
