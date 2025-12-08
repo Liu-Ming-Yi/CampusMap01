@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <title>空間詳細資料與平面圖</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f7f7f7;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #007bff;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        .detail-item {
+            display: flex;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        .detail-label {
+            font-weight: 600;
+            width: 120px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .detail-value {
+            flex-grow: 1;
+        }
+        #space-image {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #image-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #error-message {
+            color: #b00020;
+            font-weight: bold;
+        }
+        #ocr-controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        #start-ocr-btn {
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        #start-ocr-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        #ocr-results {
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px dashed #ccc;
+        }
+        #ocr-text-output {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="detail-title">空間詳細資料載入中...</h1>
+
+        <div id="details-content">
+            <p id="error-message"></p>
+            
+            <div class="detail-item">
+                <span class="detail-label">校區名稱：</span>
+                <span class="detail-value" id="campus-name"></span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">空間編號：</span>
+                <span class="detail-value" id="space-no"></span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">空間名稱：</span>
+                <span class="detail-value" id="space-name"></span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">所屬樓棟：</span>
+                <span class="detail-value" id="building-no"></span>
+            </div>
+            
+            <div class="detail-item">
+                <span class="detail-label">所在樓層：</span>
+                <span class="detail-value" id="floor-no"></span>
+            </div>
+            
+            <div id="image-container"></div>
+            
+            <div id="ocr-controls">
+                <button id="start-ocr-btn" style="display: none;" disabled>
+                    開始辨識圖片上的文字 (載入中...)
+                </button>
+            </div>
+
+            <div id="ocr-results">
+                <h3>文字辨識結果：</h3>
+                <textarea id="ocr-text-output" rows="10" readonly placeholder="辨識出的文字會顯示在這裡..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
+    
+    <script src="./config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+    <script>
+        // ---------------------------------------------------
+        // 資料對應表 (與 index.html 相同)
+        // ---------------------------------------------------
+        const CAMPUS_MAP = {
+            '1': '中央校區(校本部)',
+            '2': '介仁校區(人社院)',
+            '3': '建國校區(慈科大)'
+        };
+
+        const BUILDING_MAP = {
+            'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟',
+            'G': 'G 棟', 'H': 'H 棟', 'I': 'I 棟', 'J': 'J 棟', 'K': 'K 棟', 'L': 'L 棟',
+            'M': 'M 棟', 'N': 'N 棟', 'O': 'O 棟', 'P': 'P 棟', 'Q': 'Q 棟', 'R': 'R 棟',
+            'S': 'S 棟', 'T': 'T 棟', 'U': 'U 棟', 'V': 'V 棟', 'W': 'W 棟', 'X': 'X 棟',
+            'Y': 'Y 棟', 'Z': 'Z 棟',
+            '01': '行政大樓',
+        };
+
+        // ---------------------------------------------------
+        // 取得 URL 參數的輔助函式
+        // ---------------------------------------------------
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // ---------------------------------------------------
+        // OCR 初始化與執行邏輯
+        // ---------------------------------------------------
+        let ocrWorker = null; // 儲存 Tesseract Worker
+        
+        /**
+         * 初始化 Tesseract.js Worker 並綁定按鈕事件。
+         * @param {string} imagePath - 最終要辨識的圖片路徑 (TCUMAP/XXX.png or .jpg)
+         */
+        async function initializeOcr(imagePath) {
+            const ocrBtn = document.getElementById("start-ocr-btn");
+            const ocrOutput = document.getElementById("ocr-text-output");
+            
+            if (ocrWorker) {
+                // 如果已經初始化過，只需更新按鈕狀態
+                ocrBtn.textContent = '開始辨識圖片上的文字';
+                ocrBtn.disabled = false;
+                return;
+            }
+            
+            // 首次載入 Tesseract Worker (非同步操作)
+            ocrBtn.textContent = '載入 OCR 模組中: 0%';
+
+            try {
+                // 創建 Worker，並設定 log 函式來顯示載入進度
+                // 'chi_tra' 是繁體中文的語言代碼
+                ocrWorker = await Tesseract.createWorker('chi_tra', 1, {
+                    // logger 函式用來追蹤進度
+                    logger: m => {
+                        if (m.status === 'loading' || m.status === 'initializing') {
+                            ocrBtn.textContent = `載入 OCR 模組中: ${m.progress ? (m.progress * 100).toFixed(0) : 0}%`;
+                        } else if (m.status === 'traineddata_loaded') {
+                            ocrBtn.textContent = '載入完成，可以開始辨識';
+                        }
+                    }
+                });
+                
+                ocrBtn.textContent = '開始辨識圖片上的文字';
+                ocrBtn.disabled = false;
+                
+                // 綁定點擊事件
+                ocrBtn.onclick = async () => {
+                    ocrBtn.disabled = true;
+                    ocrBtn.textContent = '正在辨識中... 請稍候';
+                    ocrOutput.value = '辨識中...';
+                    
+                    try {
+                        // 執行 OCR 辨識
+                        const { data: { text } } = await ocrWorker.recognize(imagePath);
+                        
+                        // 成功後顯示結果
+                        ocrOutput.value = text.trim();
+                        alert('文字辨識完成！結果已顯示在下方區塊。');
+                        
+                    } catch (e) {
+                        ocrOutput.value = '辨識失敗，請檢查瀏覽器控制台的錯誤。';
+                        console.error("Tesseract OCR 執行錯誤:", e);
+                    } finally {
+                        ocrBtn.disabled = false;
+                        ocrBtn.textContent = '重新辨識圖片上的文字';
+                    }
+                };
+
+            } catch (e) {
+                ocrBtn.textContent = 'OCR 載入失敗 (請確認是否使用 http:// 協定運行)';
+                console.error("Tesseract Worker 創建失敗:", e);
+            }
+        }
+
+
+        // ---------------------------------------------------
+        // 渲染詳細資料到介面 (包含圖片載入邏輯)
+        // ---------------------------------------------------
+        function renderDetails(data) {
+            const spaceName = String(data.SpaceName ?? "").trim();
+            document.getElementById("detail-title").textContent = `${spaceName} - 詳細資料`;
+            document.getElementById("space-name").textContent = spaceName;
+
+            // 處理地點相關資訊
+            document.getElementById("campus-name").textContent = CAMPUS_MAP[String(data.CampusNo ?? "").trim()] || data.CampusNo;
+            document.getElementById("space-no").textContent = data.SpaceNo;
+            document.getElementById("building-no").textContent = BUILDING_MAP[String(data.BuildingNo ?? "").trim()] || data.BuildingNo;
+
+            const floorValue = String(data.FloorNo ?? "").trim();
+            document.getElementById("floor-no").textContent = (floorValue !== "" && !isNaN(Number(floorValue))) ? `${floorValue} 樓` : floorValue;
+            
+            
+            // ---------------------------------------------------
+            // 處理圖片顯示與 OCR 初始化
+            // ---------------------------------------------------
+            const picNo = String(data.PicNo ?? "").trim();
+            const imgContainer = document.getElementById("image-container");
+            const ocrBtn = document.getElementById("start-ocr-btn");
+            const ocrResults = document.getElementById("ocr-results");
+
+            // 預設隱藏 OCR 相關區塊，只有找到圖片才顯示
+            ocrBtn.style.display = 'none';
+            ocrResults.style.display = 'none';
+
+            if (picNo !== "") {
+                const pngPath = `TCUMAP/${picNo}.png`;
+                const jpgPath = `TCUMAP/${picNo}.jpg`;
+                let finalImagePath = null; 
+                
+                // 顯示 OCR 相關區塊
+                ocrResults.style.display = 'block';
+                
+                // 嘗試載入 .png 圖片
+                const imgPng = new Image();
+                imgPng.id = "space-image";
+                imgPng.alt = `${spaceName} 平面圖`;
+                imgPng.src = pngPath;
+
+                imgPng.onload = function() {
+                    imgContainer.innerHTML = '';
+                    imgContainer.appendChild(imgPng);
+                    finalImagePath = pngPath; 
+                    ocrBtn.style.display = 'block'; // 圖片載入成功，顯示按鈕
+                    initializeOcr(finalImagePath); // 初始化 OCR
+                };
+
+                imgPng.onerror = function() {
+                    // PNG 不存在，嘗試載入 .jpg 圖片
+                    const imgJpg = new Image();
+                    imgJpg.id = "space-image";
+                    imgJpg.alt = `${spaceName} 平面圖`;
+                    imgJpg.src = jpgPath;
+                    
+                    imgJpg.onload = function() {
+                        imgContainer.innerHTML = '';
+                        imgContainer.appendChild(imgJpg);
+                        finalImagePath = jpgPath; 
+                        ocrBtn.style.display = 'block'; // 圖片載入成功，顯示按鈕
+                        initializeOcr(finalImagePath); // 初始化 OCR
+                    };
+                    
+                    imgJpg.onerror = function() {
+                        // 兩者都不存在
+                        imgContainer.innerHTML = `<p>找不到與圖片編號 <strong>${picNo}</strong> 相關的平面圖。</p>`;
+                        ocrResults.style.display = 'none'; // 沒有圖片就隱藏 OCR 區塊
+                    };
+                    
+                    imgContainer.innerHTML = ''; 
+                };
+
+            } else {
+                imgContainer.innerHTML = `<p>此空間沒有圖片編號資料，無法顯示平面圖。</p>`;
+            }
+        }
+        
+        // ---------------------------------------------------
+        // 載入單一空間詳細資料 (透過 SpaceNo)
+        // ---------------------------------------------------
+        async function loadSpaceDetails() {
+            const errorMessageEl = document.getElementById("error-message");
+            const spaceNo = getQueryParam('spaceNo'); 
+
+            if (!spaceNo) {
+                errorMessageEl.textContent = "錯誤：網址中缺少 spaceNo 參數，無法查詢詳細資料。";
+                document.getElementById("detail-title").textContent = "錯誤";
+                return;
+            }
+
+            if (typeof SUPABASE_URL === "undefined" || typeof SUPABASE_ANON_KEY === "undefined") {
+                 errorMessageEl.textContent = "錯誤：無法找到 Supabase 連線金鑰，請檢查 config.js。";
+                 return;
+            }
+            
+            const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            errorMessageEl.textContent = "正在查詢資料庫...";
+
+            const { data, error } = await supabaseClient
+                .from("TblSpace")
+                .select("*")
+                .eq("SpaceNo", spaceNo)
+                .single(); 
+
+            if (error || !data) {
+                errorMessageEl.textContent = `資料查詢失敗或找不到資料：${error ? error.message : '資料不存在'}`;
+                document.getElementById("detail-title").textContent = "查詢失敗";
+                return;
+            }
+
+            errorMessageEl.textContent = "";
+            renderDetails(data);
+        }
+
+        // 頁面載入時執行
+        window.onload = loadSpaceDetails;
+
+    </script>
+</body>
+</html>
