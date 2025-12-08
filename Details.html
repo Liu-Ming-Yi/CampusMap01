@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>詳細資訊</title>
+    <title>空間詳細資料與平面圖</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         body {
@@ -182,17 +182,13 @@
             document.getElementById("floor-no").textContent = (floorValue !== "" && !isNaN(Number(floorValue))) ? `${floorValue} 樓` : floorValue;
             
             
-            // 💡 關鍵：設定返回按鈕的連結
+            // 💡 關鍵修正：設定返回按鈕的連結
             const backButton = document.getElementById("back-button");
-            if (spaceNo) {
-                // 將當前的 SpaceNo 作為 highlight 參數傳回給 index.html
-                backButton.onclick = () => {
-                    window.location.href = `index.html?highlight=${spaceNo}`;
-                };
-            } else {
-                // 如果沒有 SpaceNo，則退回上一頁
-                backButton.onclick = () => window.history.back();
-            }
+            
+            // **修正點：直接導航回列表頁，不傳遞任何參數**
+            backButton.onclick = () => {
+                window.location.href = `../CampusMap01/index-測試版本.html`;
+            };
 
             // ---------------------------------------------------
             // 處理圖片顯示 (與先前邏輯相同)
