@@ -40,6 +40,7 @@
         .detail-value {
             flex-grow: 1;
         }
+        /* 保持圖片樣式 */
         #space-image {
             width: 100%;
             max-width: 600px;
@@ -51,7 +52,9 @@
             margin-left: auto;
             margin-right: auto;
         }
+        /* 圖片容器需要設定為相對定位，以便之後疊加紅框 */
         #image-container {
+            position: relative; /* 新增這一行 */
             text-align: center;
             margin-bottom: 20px;
         }
@@ -59,34 +62,15 @@
             color: #b00020;
             font-weight: bold;
         }
-        #ocr-controls {
-            text-align: center;
-            margin-top: 20px;
-        }
-        #start-ocr-btn {
-            padding: 10px 20px;
-            font-size: 1rem;
-            cursor: pointer;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 4px;
-        }
-        #start-ocr-btn:disabled {
-            background-color: #6c757d;
-            cursor: not-allowed;
-        }
-        #ocr-results {
-            margin-top: 20px;
-            padding-top: 10px;
-            border-top: 1px dashed #ccc;
-        }
-        #ocr-text-output {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            font-size: 0.9rem;
-            resize: vertical;
+        
+        /* 紅框標註的樣式 (為下一步定位功能預留) */
+        #highlight-box {
+            position: absolute;
+            border: 4px solid red;
+            background-color: rgba(255, 0, 0, 0.3); /* 半透明紅色 */
+            box-sizing: border-box;
+            display: none; /* 預設隱藏 */
+            z-index: 10;
         }
     </style>
 </head>
@@ -122,23 +106,13 @@
                 <span class="detail-value" id="floor-no"></span>
             </div>
             
-            <div id="image-container"></div>
+            <div id="image-container">
+                <div id="highlight-box"></div> 
+            </div>
             
-            <div id="ocr-controls">
-                <button id="start-ocr-btn" style="display: none;" disabled>
-                    開始辨識圖片上的文字 (載入中...)
-                </button>
             </div>
-
-            <div id="ocr-results">
-                <h3>文字辨識結果：</h3>
-                <textarea id="ocr-text-output" rows="10" readonly placeholder="辨識出的文字會顯示在這裡..."></textarea>
-            </div>
-        </div>
     </div>
 
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-    
     <script src="./config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
@@ -170,76 +144,6 @@
         }
 
         // ---------------------------------------------------
-        // OCR 初始化與執行邏輯
-        // ---------------------------------------------------
-        let ocrWorker = null; // 儲存 Tesseract Worker
-        
-        /**
-         * 初始化 Tesseract.js Worker 並綁定按鈕事件。
-         * @param {string} imagePath - 最終要辨識的圖片路徑 (TCUMAP/XXX.png or .jpg)
-         */
-        async function initializeOcr(imagePath) {
-            const ocrBtn = document.getElementById("start-ocr-btn");
-            const ocrOutput = document.getElementById("ocr-text-output");
-            
-            if (ocrWorker) {
-                // 如果已經初始化過，只需更新按鈕狀態
-                ocrBtn.textContent = '開始辨識圖片上的文字';
-                ocrBtn.disabled = false;
-                return;
-            }
-            
-            // 首次載入 Tesseract Worker (非同步操作)
-            ocrBtn.textContent = '載入 OCR 模組中: 0%';
-
-            try {
-                // 創建 Worker，並設定 log 函式來顯示載入進度
-                // 'chi_tra' 是繁體中文的語言代碼
-                ocrWorker = await Tesseract.createWorker('chi_tra', 1, {
-                    // logger 函式用來追蹤進度
-                    logger: m => {
-                        if (m.status === 'loading' || m.status === 'initializing') {
-                            ocrBtn.textContent = `載入 OCR 模組中: ${m.progress ? (m.progress * 100).toFixed(0) : 0}%`;
-                        } else if (m.status === 'traineddata_loaded') {
-                            ocrBtn.textContent = '載入完成，可以開始辨識';
-                        }
-                    }
-                });
-                
-                ocrBtn.textContent = '開始辨識圖片上的文字';
-                ocrBtn.disabled = false;
-                
-                // 綁定點擊事件
-                ocrBtn.onclick = async () => {
-                    ocrBtn.disabled = true;
-                    ocrBtn.textContent = '正在辨識中... 請稍候';
-                    ocrOutput.value = '辨識中...';
-                    
-                    try {
-                        // 執行 OCR 辨識
-                        const { data: { text } } = await ocrWorker.recognize(imagePath);
-                        
-                        // 成功後顯示結果
-                        ocrOutput.value = text.trim();
-                        alert('文字辨識完成！結果已顯示在下方區塊。');
-                        
-                    } catch (e) {
-                        ocrOutput.value = '辨識失敗，請檢查瀏覽器控制台的錯誤。';
-                        console.error("Tesseract OCR 執行錯誤:", e);
-                    } finally {
-                        ocrBtn.disabled = false;
-                        ocrBtn.textContent = '重新辨識圖片上的文字';
-                    }
-                };
-
-            } catch (e) {
-                ocrBtn.textContent = 'OCR 載入失敗 (請確認是否使用 http:// 協定運行)';
-                console.error("Tesseract Worker 創建失敗:", e);
-            }
-        }
-
-
-        // ---------------------------------------------------
         // 渲染詳細資料到介面 (包含圖片載入邏輯)
         // ---------------------------------------------------
         function renderDetails(data) {
@@ -257,24 +161,18 @@
             
             
             // ---------------------------------------------------
-            // 處理圖片顯示與 OCR 初始化
+            // 處理圖片顯示
             // ---------------------------------------------------
             const picNo = String(data.PicNo ?? "").trim();
             const imgContainer = document.getElementById("image-container");
-            const ocrBtn = document.getElementById("start-ocr-btn");
-            const ocrResults = document.getElementById("ocr-results");
+            const highlightBox = document.getElementById("highlight-box");
 
-            // 預設隱藏 OCR 相關區塊，只有找到圖片才顯示
-            ocrBtn.style.display = 'none';
-            ocrResults.style.display = 'none';
+            // 預設將紅框隱藏
+            highlightBox.style.display = 'none';
 
             if (picNo !== "") {
                 const pngPath = `TCUMAP/${picNo}.png`;
                 const jpgPath = `TCUMAP/${picNo}.jpg`;
-                let finalImagePath = null; 
-                
-                // 顯示 OCR 相關區塊
-                ocrResults.style.display = 'block';
                 
                 // 嘗試載入 .png 圖片
                 const imgPng = new Image();
@@ -285,9 +183,9 @@
                 imgPng.onload = function() {
                     imgContainer.innerHTML = '';
                     imgContainer.appendChild(imgPng);
-                    finalImagePath = pngPath; 
-                    ocrBtn.style.display = 'block'; // 圖片載入成功，顯示按鈕
-                    initializeOcr(finalImagePath); // 初始化 OCR
+                    imgContainer.appendChild(highlightBox); // 重新加入紅框元素，確保在圖片上方
+                    // 💡 注意：接下來我們需要在這裡呼叫一個函式來繪製紅框
+                    // drawHighlightBox(data.Coordinates, imgPng); 
                 };
 
                 imgPng.onerror = function() {
@@ -300,15 +198,14 @@
                     imgJpg.onload = function() {
                         imgContainer.innerHTML = '';
                         imgContainer.appendChild(imgJpg);
-                        finalImagePath = jpgPath; 
-                        ocrBtn.style.display = 'block'; // 圖片載入成功，顯示按鈕
-                        initializeOcr(finalImagePath); // 初始化 OCR
+                        imgContainer.appendChild(highlightBox); // 重新加入紅框元素
+                        // 💡 注意：接下來我們需要在這裡呼叫一個函式來繪製紅框
+                        // drawHighlightBox(data.Coordinates, imgJpg); 
                     };
                     
                     imgJpg.onerror = function() {
                         // 兩者都不存在
                         imgContainer.innerHTML = `<p>找不到與圖片編號 <strong>${picNo}</strong> 相關的平面圖。</p>`;
-                        ocrResults.style.display = 'none'; // 沒有圖片就隱藏 OCR 區塊
                     };
                     
                     imgContainer.innerHTML = ''; 
