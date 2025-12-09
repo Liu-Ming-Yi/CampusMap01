@@ -80,7 +80,6 @@
             color: #b00020;
             font-weight: bold;
         }
-        /* 紅框標註的樣式 (預留給未來定位功能) */
         #highlight-box {
             position: absolute;
             border: 4px solid red;
@@ -96,7 +95,7 @@
         
         <div class="header-container">
             <h1 id="detail-title">空間詳細資料載入中...</h1>
-            <button id="back-button">🔙 返回列表</button> 
+            <a id="back-button" href="index.html">🔙 返回列表</a> 
         </div>
 
         <div id="details-content">
@@ -182,14 +181,22 @@
             document.getElementById("floor-no").textContent = (floorValue !== "" && !isNaN(Number(floorValue))) ? `${floorValue} 樓` : floorValue;
             
             
-            // 💡 關鍵修正：設定返回按鈕的連結
-            const backButton = document.getElementById("back-button");
+            // 🚀 關鍵修改區塊：設置返回連結的 href
+            const backLink = document.getElementById("back-button");
+            const keyword = getQueryParam('keyword'); // 取得 index 傳來的關鍵字
+            const sID = getQueryParam('sID');       // 取得當前的 sID (唯一識別碼)
             
-            // **修正點：直接導航回列表頁，不傳遞任何參數**
-            backButton.onclick = () => {
-                window.location.href = `../CampusMap01/index.html`;
-            };
-
+            let returnUrl = 'index.html';
+            
+            if (keyword || sID) {
+                returnUrl += `?keyword=${encodeURIComponent(keyword || '')}`; 
+                // 🚀 將 sID 作為 highlightID 參數傳回，用於精確置頂
+                returnUrl += `&highlightID=${encodeURIComponent(sID)}`; 
+            }
+            
+            backLink.href = returnUrl;
+            // 結束 關鍵修改區塊
+            
             // ---------------------------------------------------
             // 處理圖片顯示 (與先前邏輯相同)
             // ---------------------------------------------------
@@ -235,14 +242,15 @@
         }
         
         // ---------------------------------------------------
-        // 載入單一空間詳細資料 (透過 SpaceNo)
+        // 載入單一空間詳細資料
         // ---------------------------------------------------
         async function loadSpaceDetails() {
             const errorMessageEl = document.getElementById("error-message");
-            const spaceNo = getQueryParam('spaceNo'); 
+            // 🚀 關鍵：從 URL 取得 sID，用於唯一查詢
+            const sID = getQueryParam('sID'); 
 
-            if (!spaceNo) {
-                errorMessageEl.textContent = "錯誤：網址中缺少 spaceNo 參數，無法查詢詳細資料。";
+            if (!sID) {
+                errorMessageEl.textContent = "錯誤：網址中缺少 sID 參數，無法查詢詳細資料。";
                 document.getElementById("detail-title").textContent = "錯誤";
                 return;
             }
@@ -255,11 +263,14 @@
             const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             errorMessageEl.textContent = "正在查詢資料庫...";
 
-            const { data, error } = await supabaseClient
+            // 🚀 關鍵：使用 sID 進行唯一查詢
+            const { data: results, error } = await supabaseClient
                 .from("TblSpace")
                 .select("*")
-                .eq("SpaceNo", spaceNo)
-                .single(); 
+                .eq("sID", sID) 
+                .limit(1); 
+            
+            const data = results && results.length > 0 ? results[0] : null;
 
             if (error || !data) {
                 errorMessageEl.textContent = `資料查詢失敗或找不到資料：${error ? error.message : '資料不存在'}`;
@@ -277,4 +288,3 @@
     </script>
 </body>
 </html>
-
