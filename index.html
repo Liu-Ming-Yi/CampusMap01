@@ -2,11 +2,11 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>Supabase TblSpace 查詢</title>
+    <title>Supabase TblSpace 查詢與轉換</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" /> 
     
     <style>
-        /* 這裡保留您原本的樣式，適用於桌機和一般排版 */
+        /* 保持原有樣式不變 */
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
                 sans-serif;
@@ -63,19 +63,18 @@
         thead {
             background: #f0f0f0;
         }
-        /* 排序功能相關的樣式 */
         th {
             padding: 8px 10px;
             border-bottom: 1px solid #eee;
             font-size: 0.9rem;
             text-align: left;
-            cursor: pointer; /* 確保有鼠標提示 */
+            cursor: pointer; 
             user-select: none;
             white-space: nowrap;
-            transition: background-color 0.2s; /* 增加過渡效果 */
+            transition: background-color 0.2s; 
         }
         th:hover {
-            background-color: #d8e6f7; /* 改變懸停顏色 */
+            background-color: #d8e6f7; 
         }
         td {
             padding: 8px 10px;
@@ -86,15 +85,18 @@
         tr:last-child td {
             border-bottom: none;
         }
-        /* 排序提示文字的樣式 */
+        /* 突出顯示置頂列的樣式 (淺黃色突出顯示) */
+        .highlight-row { 
+            background-color: #fff9c4 !important; 
+            font-weight: bold;
+        }
         .sort-hint {
             font-size: 0.8em;
-            color: #999; /* 使用淺灰色作為預設提示 */
+            color: #999; 
             margin-left: 5px;
             font-weight: normal;
         }
         
-        /* 連結樣式，讓使用者知道這是可點擊的連結 */
         td a {
             color: #007bff;
             text-decoration: none; 
@@ -134,6 +136,7 @@
     <script>
         const statusEl = document.getElementById("status");
         const errorEl = document.getElementById("error");
+        const searchInput = document.getElementById("search-input");
 
         if (typeof SUPABASE_URL === "undefined" || typeof SUPABASE_ANON_KEY === "undefined") {
             if (statusEl) statusEl.textContent = "狀態：無法找到 SUPABASE_URL 或 SUPABASE_ANON_KEY";
@@ -146,7 +149,8 @@
             let currentData = [];
             let sortConfig = { key: null, direction: 1 };
 
-            const EXCLUDED_COLUMNS = ['sID', 'PicNo']; 
+            // 保持 sID 在排除列表，但我們需要用它來置頂
+            const EXCLUDED_COLUMNS = ['sID']; 
             
             const COLUMN_DISPLAY_NAMES = {
                 'SpaceNo': '空間編號',
@@ -171,11 +175,6 @@
                 '01': '行政大樓',
             };
             
-            /**
-                * 圖片檢查函式：非同步檢查指定 PicNo 的圖片是否存在。
-                * @param {string} picNo - 圖片編號
-                * @returns {Promise<string|null>} - 返回圖片的路徑 (png 或 jpg)，若不存在則返回 null。
-            */
             function checkImageExists(picNo) {
                 return new Promise((resolve) => {
                     if (!picNo || picNo.trim() === "") {
@@ -197,8 +196,28 @@
                 });
             }
 
-            // 共用函式：把資料顯示成表格
-            async function renderTable(data) { // 設為 async 才能等待圖片檢查結果
+            /**
+             * @param {Array<Object>} data 搜尋結果資料
+             * @param {string} highlightID 要置頂的 sID
+             */
+            function processHighlight(data, highlightID) {
+                if (!highlightID) return data;
+
+                // 🚀 關鍵：根據 sID (唯一識別碼) 進行置頂
+                const highlightIndex = data.findIndex(item => item.sID == highlightID);
+                
+                if (highlightIndex > -1) {
+                    const highlightedItem = data.splice(highlightIndex, 1)[0];
+                    data.unshift(highlightedItem); // 將該項移到陣列最前面
+                }
+                return data;
+            }
+
+            /**
+             * @param {Array<Object>} data 搜尋結果資料
+             * @param {string} highlightID 要置頂的 sID
+             */
+            async function renderTable(data, highlightID = null) { 
                 const table = document.getElementById("space-table");
                 const theadRow = document.getElementById("table-head-row");
                 const tbody = document.getElementById("space-tbody");
@@ -210,8 +229,12 @@
                     if (table) table.style.display = "none";
                     return;
                 }
-
-                const allColumns = Object.keys(data[0]);
+                
+                // 執行置頂處理
+                const processedData = processHighlight(data, highlightID); 
+                currentData = processedData; 
+                
+                const allColumns = Object.keys(processedData[0]);
                 const visibleColumns = allColumns.filter(col => !EXCLUDED_COLUMNS.includes(col));
 
                 // 產生表頭 (th)
@@ -219,31 +242,30 @@
                     const th = document.createElement("th");
                     let displayText = COLUMN_DISPLAY_NAMES[col] || col; 
                     
-                    // 檢查是否為當前排序欄位
                     if (sortConfig.key === col) {
-                        // 如果是：顯示當前的排序方向
                         const directionText = sortConfig.direction === 1 ? '▲ (由小到大)' : '▼ (由大到小)';
-                        // 使用 <font> 標籤強制覆蓋 .sort-hint 的顏色，使其在當前排序狀態下更突出
                         displayText += `<span class="sort-hint"><font color="#007bff">${directionText}</font></span>`; 
                     } else {
-                        // 如果不是排序欄位，則顯示「點擊排序」的提示
                         displayText += `<span class="sort-hint"> (點擊排序)</span>`;
                     }
 
                     th.innerHTML = displayText;
-                    th.onclick = () => { handleSort(col); };
+                    // 排序時傳遞 highlightID
+                    th.onclick = () => { handleSort(col, highlightID); }; 
                     if (theadRow) theadRow.appendChild(th);
                 });
 
                 // 產生每一列資料 (td)
-                for (const row of data) {
+                for (const row of processedData) { 
                     const tr = document.createElement("tr");
                     
+                    // 🚀 關鍵：根據 sID 判斷是否高亮
+                    if (highlightID && row.sID == highlightID) {
+                        tr.classList.add('highlight-row');
+                    }
+
                     for (const col of visibleColumns) {
                         const td = document.createElement("td");
-                        
-                        // ❌ 移除：td.setAttribute('data-label', COLUMN_DISPLAY_NAMES[col] || col); (RWD 相關)
-                        
                         const cellValue = String(row[col] ?? "").trim();
 
                         if (col === "CampusNo") {
@@ -256,31 +278,30 @@
                             } else {
                                 td.textContent = cellValue;
                             }
-
                         } else if (col === "SpaceName") {
-                            td.textContent = cellValue; // 預設顯示純文字
+                            td.textContent = cellValue; 
                             
                             const spaceNo = row.SpaceNo;
                             const picNo = row.PicNo; 
-                            
-                            // 💡 只有當有 PicNo 時才執行圖片檢查
+                            const sID = row.sID; // 獲取 sID
+
                             if (picNo) {
-                                // 非同步檢查圖片是否存在，檢查完成後才更新儲存格內容
                                 const imagePath = await checkImageExists(picNo); 
                                 
                                 if (imagePath) {
-                                    // 圖片存在，轉換為超連結
-                                    td.innerHTML = ''; // 清空純文字
+                                    td.innerHTML = ''; 
                                     
                                     const detailLink = document.createElement('a');
-                                    detailLink.href = `Details.html?spaceNo=${encodeURIComponent(spaceNo)}`; 
+                                    const currentKeyword = searchInput.value; 
+
+                                    // 🚀 關鍵：傳遞 sID 和 keyword
+                                    detailLink.href = `Details.html?sID=${encodeURIComponent(sID)}&keyword=${encodeURIComponent(currentKeyword)}`; 
+                                    
                                     detailLink.textContent = cellValue; 
-                                    detailLink.target = "_blank"; 
                                     detailLink.title = `點擊查看 ${cellValue} 的詳細資料及平面圖`;
                                     
                                     td.appendChild(detailLink);
                                 } else {
-                                    // 圖片不存在，維持純文字
                                     td.title = `沒有找到 ${cellValue} 的平面圖`;
                                 }
                             }
@@ -296,13 +317,26 @@
                 if (table) table.style.display = "table";
             }
 
-            // 排序處理函式 - 邏輯不變
-            function handleSort(key) {
+            /**
+             * @param {string} key 排序的欄位
+             * @param {string} highlightID 要置頂的 sID
+             */
+            function handleSort(key, highlightID = null) {
                 if (sortConfig.key === key) {
                     sortConfig.direction *= -1;
                 } else {
                     sortConfig.key = key;
                     sortConfig.direction = 1; 
+                }
+
+                // 排序前先移除置頂項目
+                let highlightedItem = null;
+                if (highlightID) {
+                    // 🚀 關鍵：根據 sID 找出並移除
+                    const highlightIndex = currentData.findIndex(item => item.sID == highlightID);
+                    if (highlightIndex > -1) {
+                        highlightedItem = currentData.splice(highlightIndex, 1)[0];
+                    }
                 }
 
                 currentData.sort((a, b) => {
@@ -317,12 +351,22 @@
                     }
                     return String(valA).localeCompare(String(valB)) * sortConfig.direction;
                 });
+                
+                // 排序完成後，再把置頂項目放回第一位
+                if (highlightedItem) {
+                    currentData.unshift(highlightedItem);
+                }
 
-                renderTable(currentData); 
+                // 重新渲染表格，傳遞 highlightID
+                renderTable(currentData, highlightID); 
             }
 
-            // 載入資料函式 - 邏輯不變
-            async function loadSpaces(keyword = "", limitCount = 0) { 
+            /**
+             * @param {string} keyword 搜尋關鍵字
+             * @param {number} limitCount 限制筆數
+             * @param {string} highlightID 要置頂的 sID (可選)
+             */
+            async function loadSpaces(keyword = "", limitCount = 0, highlightID = null) { 
                 if (statusEl) statusEl.textContent = "狀態：資料讀取中…";
                 if (errorEl) errorEl.textContent = "";
 
@@ -360,29 +404,45 @@
                 currentData = data;
                 sortConfig = { key: null, direction: 1 }; 
                 
-                await renderTable(currentData); // 確保等待表格渲染完成
+                // 傳遞 highlightID 給 renderTable
+                await renderTable(currentData, highlightID); 
             }
-
+            
             // ------------------------------------
-            // 事件綁定
+            // 事件綁定 & 頁面啟動邏輯 (包含返回處理)
             // ------------------------------------
-            loadSpaces("", 10);
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const returnKeyword = urlParams.get('keyword');
+            // 🚀 關鍵：接收 highlightID
+            const highlightID = urlParams.get('highlightID');
+            
+            if (returnKeyword) {
+                // 從 Details 頁面返回
+                searchInput.value = returnKeyword;
+                // 傳遞 highlightID 執行搜尋和置頂
+                loadSpaces(returnKeyword, 0, highlightID); 
+            } else {
+                // 正常啟動頁面
+                loadSpaces("", 10);
+            }
 
             const searchBtn = document.getElementById("search-btn");
             const resetBtn = document.getElementById("reset-btn");
-            const searchInput = document.getElementById("search-input");
 
-            if (searchBtn && searchInput) {
+            if (searchBtn) {
                 searchBtn.addEventListener("click", () => {
                     const keyword = searchInput.value;
-                    loadSpaces(keyword, 0); 
+                    // 一般搜尋時，沒有置頂項目
+                    loadSpaces(keyword, 0, null); 
                 });
             }
 
-            if (resetBtn && searchInput) {
+            if (resetBtn) {
                 resetBtn.addEventListener("click", () => {
                     searchInput.value = ""; 
-                    loadSpaces("", 10); 
+                    // 恢復顯示前 10 筆，沒有置頂項目
+                    loadSpaces("", 10, null); 
                 });
             }
 
@@ -390,7 +450,7 @@
                 searchInput.addEventListener("keyup", (e) => {
                     if (e.key === "Enter") {
                         const keyword = e.target.value;
-                        loadSpaces(keyword, 0); 
+                        loadSpaces(keyword, 0, null); 
                     }
                 });
             }
