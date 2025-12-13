@@ -2,22 +2,24 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>Supabase TblSpace 查詢與轉換</title>
+    <title>Supabase 測試：TblSpace 查詢與排序 (凍結行與列)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" /> 
     
     <style>
-        /* 保持原有樣式不變 */
+        /* 基礎樣式 */
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-                sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             margin: 20px;
             padding: 0;
             background-color: #f7f7f7;
         }
+        
         h1 {
             font-size: 1.5rem;
             margin-bottom: 10px;
+            padding: 5px 0; 
         }
+        
         #status {
             margin: 10px 0;
             color: #555;
@@ -27,72 +29,110 @@
             margin: 10px 0;
             white-space: pre-wrap;
         }
+        
         .search-bar {
             margin: 10px 0 20px 0;
+            display: flex; 
+            align-items: center;
+            flex-wrap: wrap; 
+            gap: 10px; 
         }
         .search-bar label {
-            margin-right: 8px;
+            width: 100%; 
             font-weight: 600;
         }
         .search-bar input {
-            padding: 6px 8px;
+            padding: 8px; 
             border-radius: 4px;
             border: 1px solid #ccc;
+            flex-grow: 1; 
             min-width: 200px;
         }
         .search-bar button {
-            padding: 6px 12px;
-            margin-left: 6px;
+            padding: 8px 15px;
             border-radius: 4px;
-            border: 1px solid #007bff;
+            border: none;
             background-color: #007bff;
             color: #fff;
             cursor: pointer;
+            white-space: nowrap; 
+            transition: background-color 0.2s;
         }
         .search-bar button:hover {
-            opacity: 0.9;
+            background-color: #0056b3; 
         }
+
+        /* ------------------------------------------- */
+        /* 表格樣式 (凍結功能核心) */
+        /* ------------------------------------------- */
+        
+        .table-container { 
+            width: 100%;
+            /* *** 恢復固定高度，以允許行凍結 (表頭) *** */
+            height: calc(100vh - 250px); 
+            max-width: 100%; 
+            /* *** 恢復滾動：允許水平和垂直滾動條出現 (這是行凍結的必要條件) *** */
+            overflow: auto; 
+            margin-top: 20px;
+            border: 1px solid #ddd; 
+        }
+
         table {
             width: 100%;
-            border-collapse: collapse;
+            min-width: 800px; 
+            border-collapse: collapse; 
             background: #fff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+            table-layout: fixed; 
         }
-        thead {
-            background: #f0f0f0;
-        }
-        th {
-            padding: 8px 10px;
-            border-bottom: 1px solid #eee;
+        
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd; 
             font-size: 0.9rem;
             text-align: left;
-            cursor: pointer; 
-            user-select: none;
             white-space: nowrap;
-            transition: background-color 0.2s; 
         }
-        th:hover {
-            background-color: #d8e6f7; 
+        
+        /* 凍結表頭 (行) - 重新設置 sticky */
+        thead th {
+            position: sticky; /* 恢復 sticky 屬性 */
+            top: 0; /* 固定在頂部 0px 的位置 */
+            background: #f0f0f0; 
+            z-index: 10; 
         }
-        td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #eee;
-            font-size: 0.9rem;
-            text-align: left;
+        
+        /* 凍結第一欄 (列) - 空間編號 */
+        td:nth-child(1) {
+            position: sticky;
+            left: 0; 
+            width: 120px; 
+            min-width: 120px;
+            background: #fff; /* 白色背景 (無色效果) */
+            z-index: 5; 
         }
-        tr:last-child td {
-            border-bottom: none;
+
+        /* 確保凍結的表頭和凍結的列交叉點 (同時 sticky) */
+        th[data-col="SpaceNo"] {
+            position: sticky; 
+            left: 0; 
+            width: 120px;
+            min-width: 120px;
+            background: #f0f0f0; 
+            z-index: 15; /* 最高 z-index 確保它位於頂部和最左側 */
+            cursor: pointer;
         }
-        /* 突出顯示置頂列的樣式 (淺黃色突出顯示) */
+        th[data-col="SpaceNo"]:hover {
+            background-color: #e0e0e0; 
+        }
+
         .highlight-row { 
             background-color: #fff9c4 !important; 
             font-weight: bold;
         }
+        
         .sort-hint {
             font-size: 0.8em;
-            color: #999; 
+            color: #555; 
             margin-left: 5px;
             font-weight: normal;
         }
@@ -107,354 +147,333 @@
             color: #0056b3;
             text-decoration: underline; 
         }
+        
     </style>
 </head>
 <body>
     <h1>Supabase 測試：TblSpace 查詢</h1>
 
-    <div id="status">狀態：準備連線至 Supabase…</div>
+    <div id="status">狀態：準備連線至 Supabase...</div>
     <div id="error"></div>
 
     <div class="search-bar">
         <label for="search-input">請輸入空間名稱、編號或圖片編號：</label>
         <input type="text" id="search-input" placeholder="例如：會議室, A102" />
         <button id="search-btn">搜尋</button>
-        <button id="reset-btn">顯示前 10 筆</button>  
+        
+        <button id="limit-btn" style="display:none;">顯示前 10 筆相關結果</button> 
+        <button id="reset-btn" style="display:none;">返回所有資料</button> 
+    </div>
+    
+    <div class="table-container" id="table-container" style="display:none;">
+        <table id="space-table">
+            <thead>
+                <tr id="table-head-row"></tr>
+            </thead>
+            <tbody id="space-tbody"></tbody>
+        </table>
     </div>
 
-    <table id="space-table" style="display:none;">
-        <thead>
-            <tr id="table-head-row"></tr>
-        </thead>
-        <tbody id="space-tbody"></tbody>
-    </table>
-
-    <script src="./config.js"></script>
+    <script src="./config.js"></script> 
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
     <script>
-        const statusEl = document.getElementById("status");
-        const errorEl = document.getElementById("error");
-        const searchInput = document.getElementById("search-input");
+        document.addEventListener('DOMContentLoaded', () => {
+            const campusMapApp = {
+                // --- DOM Elements ---
+                statusEl: document.getElementById("status"),
+                errorEl: document.getElementById("error"),
+                searchInput: document.getElementById("search-input"),
+                searchBtn: document.getElementById("search-btn"),
+                resetBtn: document.getElementById("reset-btn"),
+                limitBtn: document.getElementById("limit-btn"),
+                tableContainerEl: document.getElementById("table-container"),
+                theadRow: document.getElementById("table-head-row"),
+                tbody: document.getElementById("space-tbody"),
 
-        if (typeof SUPABASE_URL === "undefined" || typeof SUPABASE_ANON_KEY === "undefined") {
-            if (statusEl) statusEl.textContent = "狀態：無法找到 SUPABASE_URL 或 SUPABASE_ANON_KEY";
-            if (errorEl) errorEl.textContent = "請確認 config.js 是否在同一個資料夾。";
-        } else {
-            if (statusEl) statusEl.textContent = "狀態：正在連線至 Supabase…";
+                // --- State ---
+                supabaseClient: null,
+                currentData: [],
+                currentKeyword: "",
+                sortConfig: { key: 'SpaceNo', direction: 1 },
+                
+                // --- Constants ---
+                EXCLUDED_COLUMNS: ['sID'],
+                COLUMN_DISPLAY_NAMES: {
+                    'SpaceNo': '空間編號',
+                    'SpaceName': '空間名稱',
+                    'CampusNo': '校區名稱',
+                    'BuildingNo': '所屬樓棟',
+                    'FloorNo': '所在樓層',
+                    'PicNo': '圖片編號'
+                },
+                SELECT_COLUMNS: 'sID,SpaceNo,SpaceName,CampusNo,BuildingNo,FloorNo,PicNo',
+                MAX_ROW_LIMIT: 5000,
+                
+                CAMPUS_MAP: Object.freeze({
+                    '1': '中央校區(校本部)',
+                    '2': '介仁校區(人社院)',
+                    '3': '建國校區(慈科大)'
+                }),
+                
+                BUILDING_MAP: Object.freeze({
+                    'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟',
+                    'G': 'G 棟', 'H': 'H 棟', 'I': 'I 棟', 'J': 'J 棟', 'K': 'K 棟', 'L': 'L 棟',
+                    'M': 'M 棟', 'N': 'N 棟', 'O': 'O 棟', 'P': 'P 棟', 'Q': 'Q 棟', 'R': 'R 棟',
+                    'S': 'S 棟', 'T': 'T 棟', 'U': 'U 棟', 'V': 'V 棟', 'W': 'W 棟', 'X': 'X 棟',
+                    'Y': 'Y 棟', 'Z': 'Z 棟',
+                    '01': '行政大樓',
+                }),
 
-            const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-            let currentData = [];
-            let sortConfig = { key: null, direction: 1 };
-
-            // 保持 sID 在排除列表，但我們需要用它來置頂
-            const EXCLUDED_COLUMNS = ['sID']; 
-            
-            const COLUMN_DISPLAY_NAMES = {
-                'SpaceNo': '空間編號',
-                'SpaceName': '空間名稱',
-                'CampusNo': '校區名稱',
-                'BuildingNo': '所屬樓棟',
-                'FloorNo': '所在樓層',
-            };
-
-            const CAMPUS_MAP = {
-                '1': '中央校區(校本部)',
-                '2': '介仁校區(人社院)',
-                '3': '建國校區(慈科大)'
-            };
-
-            const BUILDING_MAP = {
-                'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟',
-                'G': 'G 棟', 'H': 'H 棟', 'I': 'I 棟', 'J': 'J 棟', 'K': 'K 棟', 'L': 'L 棟',
-                'M': 'M 棟', 'N': 'N 棟', 'O': 'O 棟', 'P': 'P 棟', 'Q': 'Q 棟', 'R': 'R 棟',
-                'S': 'S 棟', 'T': 'T 棟', 'U': 'U 棟', 'V': 'V 棟', 'W': 'W 棟', 'X': 'X 棟',
-                'Y': 'Y 棟', 'Z': 'Z 棟',
-                '01': '行政大樓',
-            };
-            
-            function checkImageExists(picNo) {
-                return new Promise((resolve) => {
-                    if (!picNo || picNo.trim() === "") {
-                        resolve(null);
+                // --- Methods ---
+                init() {
+                    if (typeof SUPABASE_URL === "undefined" || typeof SUPABASE_ANON_KEY === "undefined") {
+                        this.statusEl.textContent = "狀態: 無法找到設定檔";
+                        this.errorEl.textContent = "請確認 config.js 檔案存在且已正確載入。";
                         return;
                     }
-                    const pngPath = `TCUMAP/${picNo}.png`;
-                    const jpgPath = `TCUMAP/${picNo}.jpg`;
-
-                    const checkPng = new Image();
-                    checkPng.onload = () => resolve(pngPath);
-                    checkPng.onerror = () => {
-                        const checkJpg = new Image();
-                        checkJpg.onload = () => resolve(jpgPath);
-                        checkJpg.onerror = () => resolve(null); // PNG 和 JPG 都不存在
-                        checkJpg.src = jpgPath;
-                    };
-                    checkPng.src = pngPath;
-                });
-            }
-
-            /**
-             * @param {Array<Object>} data 搜尋結果資料
-             * @param {string} highlightID 要置頂的 sID
-             */
-            function processHighlight(data, highlightID) {
-                if (!highlightID) return data;
-
-                // 🚀 關鍵：根據 sID (唯一識別碼) 進行置頂
-                const highlightIndex = data.findIndex(item => item.sID == highlightID);
-                
-                if (highlightIndex > -1) {
-                    const highlightedItem = data.splice(highlightIndex, 1)[0];
-                    data.unshift(highlightedItem); // 將該項移到陣列最前面
-                }
-                return data;
-            }
-
-            /**
-             * @param {Array<Object>} data 搜尋結果資料
-             * @param {string} highlightID 要置頂的 sID
-             */
-            async function renderTable(data, highlightID = null) { 
-                const table = document.getElementById("space-table");
-                const theadRow = document.getElementById("table-head-row");
-                const tbody = document.getElementById("space-tbody");
-
-                theadRow.innerHTML = "";
-                tbody.innerHTML = "";
-
-                if (!data || data.length === 0) {
-                    if (table) table.style.display = "none";
-                    return;
-                }
-                
-                // 執行置頂處理
-                const processedData = processHighlight(data, highlightID); 
-                currentData = processedData; 
-                
-                const allColumns = Object.keys(processedData[0]);
-                const visibleColumns = allColumns.filter(col => !EXCLUDED_COLUMNS.includes(col));
-
-                // 產生表頭 (th)
-                visibleColumns.forEach(col => {
-                    const th = document.createElement("th");
-                    let displayText = COLUMN_DISPLAY_NAMES[col] || col; 
                     
-                    if (sortConfig.key === col) {
-                        const directionText = sortConfig.direction === 1 ? '▲ (由小到大)' : '▼ (由大到小)';
-                        displayText += `<span class="sort-hint"><font color="#007bff">${directionText}</font></span>`; 
+                    this.statusEl.textContent = "狀態: 正在連線至 Supabase...";
+                    this.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    
+                    this.addEventListeners();
+                    this.loadFromURL();
+                },
+
+                addEventListeners() {
+                    this.searchBtn.addEventListener("click", () => this.loadSpaces(this.searchInput.value));
+                    this.resetBtn.addEventListener("click", () => window.location.href = window.location.pathname);
+                    this.limitBtn.addEventListener("click", () => this.loadSpaces(this.currentKeyword, 10));
+                    this.searchInput.addEventListener("keyup", e => e.key === "Enter" && this.loadSpaces(e.target.value));
+                    this.searchInput.addEventListener("input", () => this.toggleSearchActions(this.searchInput.value.trim() !== ""));
+                    
+                    // 事件代理：只在 thead 上註冊一次事件監聽
+                    this.theadRow.addEventListener('click', (e) => {
+                        const th = e.target.closest('th');
+                        if (th && th.dataset.col === 'SpaceNo') {
+                            const highlightID = new URLSearchParams(window.location.search).get('highlightID');
+                            this.handleSort(th.dataset.col, highlightID);
+                        }
+                    });
+                },
+                
+                toggleSearchActions(hasKeyword) {
+                    this.limitBtn.style.display = hasKeyword ? 'inline-block' : 'none';
+                    this.resetBtn.style.display = hasKeyword ? 'inline-block' : 'none';
+                },
+
+                loadFromURL() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const returnKeyword = urlParams.get('keyword');
+                    const highlightID = urlParams.get('highlightID');
+                    
+                    if (returnKeyword) {
+                        this.searchInput.value = returnKeyword;
+                        this.toggleSearchActions(returnKeyword.trim() !== "");
+                        this.loadSpaces(returnKeyword, 0, highlightID); 
                     } else {
-                        displayText += `<span class="sort-hint"> (點擊排序)</span>`;
+                        this.toggleSearchActions(false);
+                        this.loadSpaces("", 0); 
+                    }
+                },
+                
+                cleanSpaceData(data) {
+                    if (!data) return [];
+                    return data.map(item => ({
+                        ...item,
+                        SpaceNo: String(item.SpaceNo || '').trim(),
+                        SpaceName: String(item.SpaceName || '').trim(),
+                        PicNo: String(item.PicNo || '').trim(),
+                    }));
+                },
+
+                renderTable(data, highlightID = null) {
+                    this.theadRow.innerHTML = "";
+                    this.tbody.innerHTML = "";
+
+                    if (!data || data.length === 0) {
+                        this.tableContainerEl.style.display = "none";
+                        return;
                     }
 
-                    th.innerHTML = displayText;
-                    // 排序時傳遞 highlightID
-                    th.onclick = () => { handleSort(col, highlightID); }; 
-                    if (theadRow) theadRow.appendChild(th);
-                });
+                    this.tableContainerEl.style.display = "block";
+                    const visibleColumns = Object.keys(data[0]).filter(col => !this.EXCLUDED_COLUMNS.includes(col));
 
-                // 產生每一列資料 (td)
-                for (const row of processedData) { 
-                    const tr = document.createElement("tr");
+                    // --- Render Header ---
+                    const headerHTML = visibleColumns.map(col => {
+                        const isSpaceNo = col === "SpaceNo";
+                        const isSortKey = this.sortConfig.key === col;
+                        let sortIndicator = '';
+                        let sortHintText = '';
+                        
+                        if (isSpaceNo) {
+                            sortHintText = '(點擊排序)';
+                            if (isSortKey) {
+                                // 使用標準 HTML 實體字元 &#x25B2; (▲) 和 &#x25BC; (▼)
+                                sortIndicator = this.sortConfig.direction === 1 ? '&#x25B2; (由小到大)' : '&#x25BC; (由大到小)';
+                                sortHintText = '';
+                            }
+                        }
+                        
+                        const displayText = this.COLUMN_DISPLAY_NAMES[col] || col;
+                        
+                        return `<th scope="col" data-col="${col}" ${isSpaceNo ? 'style="cursor: pointer;"' : ''}>
+                            ${displayText} 
+                            <span class="sort-hint">${sortHintText || `<font color="#007bff">${sortIndicator}</font>`}</span>
+                        </th>`;
+                    }).join('');
+                    this.theadRow.innerHTML = headerHTML;
                     
-                    // 🚀 關鍵：根據 sID 判斷是否高亮
-                    if (highlightID && row.sID == highlightID) {
-                        tr.classList.add('highlight-row');
+                    // --- Render Body ---
+                    const bodyHTML = data.map(row => {
+                        const highlightClass = (highlightID && row.sID == highlightID) ? 'highlight-row' : '';
+                        
+                        const cellsHTML = visibleColumns.map(col => {
+                            const cellValue = String(row[col] ?? "").trim();
+                            let cellContent = cellValue;
+                            let cellTitle = cellValue;
+                            let htmlContent = cellValue;
+                            
+                            switch (col) {
+                                case "CampusNo":
+                                    cellContent = this.CAMPUS_MAP[cellValue] || cellValue;
+                                    break;
+                                case "BuildingNo":
+                                    cellContent = this.BUILDING_MAP[cellValue] || cellValue;
+                                    break;
+                                case "FloorNo":
+                                    const floorNum = Number(cellValue);
+                                    if (!isNaN(floorNum) && cellValue !== "") {
+                                        cellContent = `${cellValue} 樓`;
+                                    }
+                                    break;
+                            }
+                            
+                            if (col === "SpaceName" && row.PicNo) {
+                                const currentKeyword = this.searchInput.value;
+                                const sID = row.sID;
+                                const href = `Details.html?sID=${encodeURIComponent(sID)}&keyword=${encodeURIComponent(currentKeyword)}`;
+                                cellTitle = `點擊查看 ${cellValue} 的詳細資料及平面圖 (編號: ${row.PicNo})`;
+                                htmlContent = `<a href="${href}" title="${cellTitle}">${cellContent}</a>`;
+                            } else {
+                                htmlContent = cellContent;
+                            }
+
+                            return `<td title="${cellTitle}">${htmlContent}</td>`;
+                        }).join('');
+                        
+                        return `<tr class="${highlightClass}">${cellsHTML}</tr>`;
+                    }).join('');
+
+                    this.tbody.innerHTML = bodyHTML;
+                },
+                
+                naturalCompare(a, b) {
+                    if (a === b) return 0;
+                    const re = /(\d+)/g;
+                    const aParts = String(a || '').split(re).filter(Boolean);
+                    const bParts = String(b || '').split(re).filter(Boolean);
+
+                    const len = Math.max(aParts.length, bParts.length);
+                    for (let i = 0; i < len; i++) {
+                        const aPart = aParts[i] || '';
+                        const bPart = bParts[i] || '';
+
+                        const isANum = !isNaN(Number(aPart));
+                        const isBNum = !isNaN(Number(bPart));
+
+                        if (isANum && isBNum) {
+                            const numA = parseInt(aPart, 10);
+                            const numB = parseInt(bPart, 10);
+                            if (numA !== numB) return numA - numB;
+                        } else if (aPart !== bPart) {
+                            return aPart.localeCompare(bPart);
+                        }
+                    }
+                    return 0;
+                },
+
+                handleSort(key, highlightID = null) {
+                    if (key !== 'SpaceNo') return;
+
+                    this.sortConfig.direction = (this.sortConfig.key === key) ? this.sortConfig.direction * -1 : 1;
+                    this.sortConfig.key = key;
+                    
+                    let highlightedItem = null;
+                    let sortableData = [...this.currentData];
+
+                    if (highlightID) {
+                        const highlightIndex = sortableData.findIndex(item => item.sID == highlightID);
+                        if (highlightIndex > -1) {
+                            highlightedItem = sortableData.splice(highlightIndex, 1)[0];
+                        }
                     }
 
-                    for (const col of visibleColumns) {
-                        const td = document.createElement("td");
-                        const cellValue = String(row[col] ?? "").trim();
+                    sortableData.sort((a, b) => {
+                        const comparison = this.naturalCompare(a[key], b[key]);
+                        return comparison * this.sortConfig.direction;
+                    });
+                    
+                    if (highlightedItem) {
+                        sortableData.unshift(highlightedItem);
+                    }
+                    
+                    this.currentData = sortableData;
+                    this.renderTable(this.currentData, highlightID);
+                },
 
-                        if (col === "CampusNo") {
-                            td.textContent = CAMPUS_MAP[cellValue] || cellValue; 
-                        } else if (col === "BuildingNo") {
-                            td.textContent = BUILDING_MAP[cellValue] || cellValue;
-                        } else if (col === "FloorNo") { 
-                            if (cellValue !== "" && !isNaN(Number(cellValue))) {
-                                td.textContent = cellValue + ' 樓'; 
-                            } else {
-                                td.textContent = cellValue;
-                            }
-                        } else if (col === "SpaceName") {
-                            td.textContent = cellValue; 
-                            
-                            const spaceNo = row.SpaceNo;
-                            const picNo = row.PicNo; 
-                            const sID = row.sID; // 獲取 sID
+                async loadSpaces(keyword = "", limitCount = 0, highlightID = null) {
+                    this.statusEl.textContent = "狀態: 資料讀取中...";
+                    this.errorEl.textContent = "";
+                    this.tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">載入中...</td></tr>';
+                    this.tableContainerEl.style.display = 'block';
 
-                            if (picNo) {
-                                const imagePath = await checkImageExists(picNo); 
-                                
-                                if (imagePath) {
-                                    td.innerHTML = ''; 
-                                    
-                                    const detailLink = document.createElement('a');
-                                    const currentKeyword = searchInput.value; 
+                    this.currentKeyword = keyword.trim();
+                    this.toggleSearchActions(this.currentKeyword !== "");
 
-                                    // 🚀 關鍵：傳遞 sID 和 keyword
-                                    detailLink.href = `Details.html?sID=${encodeURIComponent(sID)}&keyword=${encodeURIComponent(currentKeyword)}`; 
-                                    
-                                    detailLink.textContent = cellValue; 
-                                    detailLink.title = `點擊查看 ${cellValue} 的詳細資料及平面圖`;
-                                    
-                                    td.appendChild(detailLink);
-                                } else {
-                                    td.title = `沒有找到 ${cellValue} 的平面圖`;
-                                }
-                            }
-                        } else {
-                            td.textContent = cellValue;
+                    let query = this.supabaseClient.from("TblSpace").select(this.SELECT_COLUMNS);
+
+                    if (this.currentKeyword) {
+                        const searchFields = ['SpaceName', 'SpaceNo', 'PicNo'];
+                        const orFilter = searchFields.map(field => `${field}.ilike.%${this.currentKeyword}%`).join(',');
+                        query = query.or(orFilter);
+                    }
+
+                    query = query.limit(limitCount > 0 ? limitCount : this.MAX_ROW_LIMIT);
+
+                    try {
+                        const { data, error } = await query;
+
+                        if (error) throw error;
+
+                        if (!data || data.length === 0) {
+                            this.statusEl.textContent = this.currentKeyword ? `狀態: 找不到與「${this.currentKeyword}」相關的資料` : "狀態: 資料庫中目前沒有資料。";
+                            this.renderTable([]);
+                            return;
+                        }
+                        
+                        this.statusEl.textContent = `狀態: 讀取成功，共取得 ${data.length} 筆資料`;
+                        this.currentData = this.cleanSpaceData(data);
+                        
+                        if (!this.currentKeyword && this.sortConfig.key !== 'SpaceNo') {
+                            this.sortConfig = { key: 'SpaceNo', direction: 1 };
+                        } else if (this.currentKeyword && this.sortConfig.key !== 'SpaceNo') {
+                             this.sortConfig = { key: 'SpaceNo', direction: 1 };
                         }
 
-                        tr.appendChild(td);
-                    }
-                    if (tbody) tbody.appendChild(tr);
-                }
+                        this.handleSort(this.sortConfig.key, highlightID);
 
-                if (table) table.style.display = "table";
-            }
-
-            /**
-             * @param {string} key 排序的欄位
-             * @param {string} highlightID 要置頂的 sID
-             */
-            function handleSort(key, highlightID = null) {
-                if (sortConfig.key === key) {
-                    sortConfig.direction *= -1;
-                } else {
-                    sortConfig.key = key;
-                    sortConfig.direction = 1; 
-                }
-
-                // 排序前先移除置頂項目
-                let highlightedItem = null;
-                if (highlightID) {
-                    // 🚀 關鍵：根據 sID 找出並移除
-                    const highlightIndex = currentData.findIndex(item => item.sID == highlightID);
-                    if (highlightIndex > -1) {
-                        highlightedItem = currentData.splice(highlightIndex, 1)[0];
+                    } catch (error) {
+                        this.statusEl.textContent = "狀態: 讀取失敗";
+                        this.errorEl.textContent = `錯誤訊息:\n${error.message}`;
+                        this.renderTable([]);
                     }
                 }
+            };
 
-                currentData.sort((a, b) => {
-                    let valA = a[key];
-                    let valB = b[key];
-
-                    if (valA == null) return 1;
-                    if (valB == null) return -1;
-
-                    if (!isNaN(valA) && !isNaN(valB)) {
-                        return (Number(valA) - Number(valB)) * sortConfig.direction;
-                    }
-                    return String(valA).localeCompare(String(valB)) * sortConfig.direction;
-                });
-                
-                // 排序完成後，再把置頂項目放回第一位
-                if (highlightedItem) {
-                    currentData.unshift(highlightedItem);
-                }
-
-                // 重新渲染表格，傳遞 highlightID
-                renderTable(currentData, highlightID); 
-            }
-
-            /**
-             * @param {string} keyword 搜尋關鍵字
-             * @param {number} limitCount 限制筆數
-             * @param {string} highlightID 要置頂的 sID (可選)
-             */
-            async function loadSpaces(keyword = "", limitCount = 0, highlightID = null) { 
-                if (statusEl) statusEl.textContent = "狀態：資料讀取中…";
-                if (errorEl) errorEl.textContent = "";
-
-                let query = supabaseClient.from("TblSpace").select("*"); 
-                const trimmedKeyword = keyword.trim();
-
-                if (trimmedKeyword !== "") {
-                    const orFilter = 
-                        `SpaceName.ilike.%${trimmedKeyword}%,` + 
-                        `SpaceNo.ilike.%${trimmedKeyword}%,` +
-                        `PicNo.ilike.%${trimmedKeyword}%`; 
-                    query = query.or(orFilter);
-                }
-
-                if (limitCount > 0) {
-                    query = query.limit(limitCount);
-                }
-
-                const { data, error } = await query;
-
-                if (error) {
-                    if (statusEl) statusEl.textContent = "狀態：讀取失敗";
-                    if (errorEl) errorEl.textContent = "錯誤訊息：\n" + error.message;
-                    renderTable([]);
-                    return;
-                }
-
-                if (statusEl) statusEl.textContent = "狀態：讀取成功，共取得 " + (data ? data.length : 0) + " 筆資料";
-
-                if (!data || data.length === 0) {
-                    renderTable([]);
-                    return;
-                }
-
-                currentData = data;
-                sortConfig = { key: null, direction: 1 }; 
-                
-                // 傳遞 highlightID 給 renderTable
-                await renderTable(currentData, highlightID); 
-            }
-            
-            // ------------------------------------
-            // 事件綁定 & 頁面啟動邏輯 (包含返回處理)
-            // ------------------------------------
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            const returnKeyword = urlParams.get('keyword');
-            // 🚀 關鍵：接收 highlightID
-            const highlightID = urlParams.get('highlightID');
-            
-            if (returnKeyword) {
-                // 從 Details 頁面返回
-                searchInput.value = returnKeyword;
-                // 傳遞 highlightID 執行搜尋和置頂
-                loadSpaces(returnKeyword, 0, highlightID); 
-            } else {
-                // 正常啟動頁面
-                loadSpaces("", 10);
-            }
-
-            const searchBtn = document.getElementById("search-btn");
-            const resetBtn = document.getElementById("reset-btn");
-
-            if (searchBtn) {
-                searchBtn.addEventListener("click", () => {
-                    const keyword = searchInput.value;
-                    // 一般搜尋時，沒有置頂項目
-                    loadSpaces(keyword, 0, null); 
-                });
-            }
-
-            if (resetBtn) {
-                resetBtn.addEventListener("click", () => {
-                    searchInput.value = ""; 
-                    // 恢復顯示前 10 筆，沒有置頂項目
-                    loadSpaces("", 10, null); 
-                });
-            }
-
-            if (searchInput) {
-                searchInput.addEventListener("keyup", (e) => {
-                    if (e.key === "Enter") {
-                        const keyword = e.target.value;
-                        loadSpaces(keyword, 0, null); 
-                    }
-                });
-            }
-        }
+            campusMapApp.init();
+        });
     </script>
 </body>
 </html>
