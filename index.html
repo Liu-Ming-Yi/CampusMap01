@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8" />
     <title>Supabase 測試：TblSpace 查詢與排序 (浮動表頭可點擊)</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" /> 
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         /* 基礎樣式 */
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            margin: 0; 
+            margin: 0;
             padding: 0;
             background-color: #f7f7f7;
         }
@@ -17,55 +16,59 @@
         /* 內容容器：定義主體寬度，並提供 20px 邊距 */
         .main-content-wrapper {
             max-width: 100%;
-            padding: 0 20px; 
-            margin: 20px auto; 
+            padding: 0 20px;
+            margin: 20px auto;
         }
-        
+
         h1 {
             font-size: 1.5rem;
             margin-bottom: 10px;
-            padding: 5px 0; 
+            padding: 5px 0;
         }
-        
+
         #status {
             margin: 10px 0;
             color: #555;
         }
+
         #error {
             color: #b00020;
             margin: 10px 0;
             white-space: pre-wrap;
         }
-        
-        /* 搜尋欄位樣式 */
+
+        /* 搜尋欄位樣式 (保持不變) */
         .search-bar {
             margin: 10px 0 20px 0;
-            display: flex; 
+            display: flex;
             align-items: center;
-            flex-wrap: wrap; 
-            gap: 10px; 
+            flex-wrap: wrap;
+            gap: 10px;
         }
+
         .search-bar label {
-            width: 100%; 
+            width: 100%;
             font-weight: 600;
         }
+
         .search-bar label[for="campus-filter"],
         .search-bar label[for="building-filter"] {
-            width: auto; 
+            width: auto;
             font-weight: 500;
-            margin-left: 10px; 
+            margin-left: 10px;
         }
 
         .search-bar input,
-        .search-bar select { /* 新增 select 樣式 */
-            padding: 8px; 
+        .search-bar select {
+            padding: 8px;
             border-radius: 4px;
             border: 1px solid #ccc;
-            flex-grow: 1; 
+            flex-grow: 1;
             min-width: 200px;
-            box-sizing: border-box; /* 確保 padding 不會撐大元件 */
+            box-sizing: border-box;
             background-color: #fff;
         }
+
         .search-bar select {
             flex-grow: 0;
             min-width: 120px;
@@ -79,167 +82,235 @@
             background-color: #007bff;
             color: #fff;
             cursor: pointer;
-            white-space: nowrap; 
+            white-space: nowrap;
             transition: background-color 0.2s;
         }
+
         .search-bar button:hover {
-            background-color: #0056b3; 
+            background-color: #0056b3;
         }
 
         /* ------------------------------------------- */
         /* 浮動表頭樣式 */
         /* ------------------------------------------- */
-
         .floating-header-container {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 100;
-            overflow: hidden; 
-            background-color: #fff;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-            display: none; 
+            overflow: hidden;
+            background-color: #444; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+            display: none;
         }
+
         .floating-header {
-            width: 100%; 
-            min-width: 800px; 
+            width: 100%;
+            min-width: 800px;
             border-collapse: collapse;
             table-layout: fixed;
-            background-color: #f0f0f0;
+            background-color: transparent;
         }
+
         .floating-header thead {
-             background: none; 
+            background: none;
         }
-        
+
         /* ------------------------------------------- */
-        /* 表格樣式 - 修正長文本溢出 */
+        /* 表格樣式 */
         /* ------------------------------------------- */
-        
-        .table-container { 
+        .table-container {
             width: 100%;
             margin-top: 20px;
-            border: none; 
-            overflow-x: auto; 
+            border: none;
+            overflow-x: auto;
             overflow-y: hidden;
             background: #fff;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08); 
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
         }
 
         table {
             width: 100%;
-            min-width: 800px; 
-            border-collapse: collapse; 
-            background: none; 
-            table-layout: fixed; 
+            min-width: 800px;
+            border-collapse: collapse;
+            background: none;
+            table-layout: fixed;
         }
-        
-        th, td {
+
+        th,
+        td {
             padding: 10px;
-            border: none; 
+            border: none;
             font-size: 0.9rem;
             text-align: left;
-            
-            white-space: nowrap; 
-            overflow: hidden; 
-            text-overflow: ellipsis; 
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        
-        /* 欄位寬度鎖定 */
-        th[data-col="SpaceName"], td[data-col="SpaceName"] {
-            max-width: 250px; 
-            width: 250px; 
+
+        /* 欄位寬度鎖定 (不變) */
+        th[data-col="SpaceName"],
+        td[data-col="SpaceName"] {
+            max-width: 250px;
+            width: 250px;
         }
-        th[data-col="CampusNo"], td[data-col="CampusNo"] {
-            max-width: 150px; 
-            width: 150px; 
+
+        th[data-col="CampusNo"],
+        td[data-col="CampusNo"] {
+            max-width: 150px;
+            width: 150px;
         }
-        th[data-col="SpaceNo"], td[data-col="SpaceNo"] {
+
+        th[data-col="SpaceNo"],
+        td[data-col="SpaceNo"] {
             max-width: 120px;
             width: 120px;
         }
 
-        /* 底部細線作為分隔線 */
-        #space-table > tbody > tr > td {
-            border-bottom: 1px solid #eee; 
+        /* 底部細線作為分隔線 (不變) */
+        #space-table>tbody>tr>td {
+            border-bottom: 1px solid #eee;
         }
-        
-        #space-table > tbody > tr:last-child > td {
-            border-bottom: none; 
+
+        #space-table>tbody>tr:last-child>td {
+            border-bottom: none;
         }
-        
-        /* 原表頭樣式 */
-        #space-table > thead > tr > th {
-            background: #f0f0f0; 
+
+        /* =================================================== */
+        /* 深色按鈕標題欄樣式 (保留) */
+        /* =================================================== */
+        #space-table>thead>tr>th {
+            background: #555; 
+            color: #fff; 
             user-select: none;
-            transition: background-color 0.2s; 
-            border-bottom: 2px solid #ddd; 
+            transition: background-color 0.2s;
+            border-bottom: none; 
+            box-shadow: inset 0 0 5px #555;
         }
         
+        #space-table>thead>tr>th:not(:last-child) {
+            border-right: 1px solid #555; 
+        }
+
         th[data-col="SpaceNo"] {
-            cursor: pointer; /* 統一在這裡設置可點擊游標 */
+            cursor: pointer;
+            padding-right: 25px;
         }
-        
-        th[data-col="SpaceNo"]:hover {
-            background-color: #d8e6f7; 
+
+        th[data-col="SpaceNo"]:hover,
+        .floating-header th[data-col="SpaceNo"]:hover {
+            background-color: #555;
         }
-        
-        .highlight-row { 
-            background-color: #fff9c4 !important; 
-            font-weight: bold;
+
+        /* =================================================== */
+        /* 排序指示器樣式 (使用三角形 ▴▾, 變大, 緊密相連) */
+        /* =================================================== */
+        .sort-indicator {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            /* 關鍵：極小的行高，讓符號緊密堆疊 */
+            line-height: 0.8; 
+            margin-left: 5px;
+            vertical-align: middle; 
+            /* 調整整個組件的位置，使其更居中 */
+            transform: translateY(-1px); 
         }
+
+        /* 符號基礎樣式：統一大小，淡色 */
+        .sort-arrow {
+            color: rgba(255, 255, 255, 0.4); 
+            /* 增加符號大小 */
+            font-size: 1.0rem; 
+            transition: color 0.15s;
+            display: block;
+        }
+
+        /* 由於三角形的基線與菱形不同，我們需要微調 transform 數值 */
         
+        /* 升序狀態下，向上三角形突出顯示 (▴) */
+        .sort-indicator.asc .arrow-up {
+            color: #8ac0ff; 
+            /* 向上移動以貼合下方三角形尖端 */
+            transform: translateY(0.1em); 
+        }
+
+        /* 降序狀態下，向下三角形突出顯示 (▾) */
+        .sort-indicator.desc .arrow-down {
+            color: #8ac0ff; 
+            /* 向上移動以貼合上方三角形尖端 */
+            transform: translateY(-0.1em); 
+        }
+
+        /* 調整未選中時的兩個三角形，讓它們也貼合 */
+        .sort-arrow.arrow-up:not(.sort-indicator.asc .arrow-up) {
+            transform: translateY(0.1em);
+        }
+        .sort-arrow.arrow-down:not(.sort-indicator.desc .arrow-down) {
+            transform: translateY(-0.1em);
+        }
+
+        /* 調整提示文字 (用於未排序時) */
         .sort-hint {
-            font-size: 1em; 
+            font-size: 0.9em;
             margin-left: 8px;
             font-weight: normal;
+            line-height: 1;
+            color: #ddd; 
         }
-        
+
+        /* =================================================== */
+        /* 其他行與連結樣式 (保持不變) */
+        /* =================================================== */
+        .highlight-row {
+            background-color: #fff9c4 !important;
+            font-weight: bold;
+        }
+
         td a {
             color: #007bff;
-            text-decoration: none; 
+            text-decoration: none;
             cursor: pointer;
             font-weight: 500;
         }
+
         td a:hover {
             color: #0056b3;
-            text-decoration: underline; 
+            text-decoration: underline;
         }
-        
+
         /* ------------------------------------------- */
-        /* 新增: 回到頂端按鈕樣式 */
+        /* 回到頂端按鈕樣式 */
         /* ------------------------------------------- */
         #back-to-top {
-            display: none; /* 預設隱藏 */
-            position: fixed; /* 固定位置 */
-            bottom: 20px; /* 距離底部 20px */
-            right: 20px; /* 距離右側 20px */
-            z-index: 1000; /* 確保它在最上層 */
-            
-            /* 外觀設計 */
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
             width: 45px;
             height: 45px;
             line-height: 45px;
             text-align: center;
-            font-size: 1.5rem; /* 使用 🔝 emoji，保持足夠大小 */
-            background-color: rgba(0, 123, 255, 0.8); /* 藍色背景，帶透明度 */
+            font-size: 1.5rem;
+            background-color: rgba(0, 123, 255, 0.8);
             color: white;
-            border-radius: 50%; /* 圓形按鈕 */
-            text-decoration: none; /* 移除下劃線 */
+            border-radius: 50%;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             cursor: pointer;
             transition: background-color 0.3s, opacity 0.3s;
         }
 
         #back-to-top:hover {
-            background-color: #007bff; /* 滑鼠懸停時顏色加深 */
+            background-color: #007bff;
             opacity: 1;
         }
-        
     </style>
 </head>
+
 <body>
-    
     <div class="floating-header-container" id="floating-header-container">
         <table class="floating-header" id="floating-header-table">
             <thead>
@@ -248,9 +319,8 @@
         </table>
     </div>
 
-    <div class="main-content-wrapper"> 
+    <div class="main-content-wrapper">
         <h1>Supabase 測試：TblSpace 查詢</h1>
-
         <div id="status">狀態：準備連線至 Supabase...</div>
         <div id="error"></div>
 
@@ -262,17 +332,17 @@
             <label for="campus-filter" style="width: auto; font-weight: normal;">校區篩選：</label>
             <select id="campus-filter">
                 <option value="">-- 所有校區 --</option>
-                </select>
-            
+            </select>
+
             <label for="building-filter" style="width: auto; font-weight: normal;">樓棟篩選：</label>
             <select id="building-filter">
                 <option value="">-- 所有樓棟 --</option>
-                </select>
-            
-            <button id="limit-btn" style="display:none;">顯示前 10 筆相關結果</button> 
-            <button id="reset-btn" style="display:none;">重設 / 返回所有資料</button> 
+            </select>
+
+            <button id="limit-btn" style="display:none;">顯示前 10 筆相關結果</button>
+            <button id="reset-btn" style="display:none;">重設 / 返回所有資料</button>
         </div>
-        
+
         <div class="table-container" id="table-container" style="display:none;">
             <table id="space-table">
                 <thead>
@@ -281,13 +351,12 @@
                 <tbody id="space-tbody"></tbody>
             </table>
         </div>
-    </div> 
+    </div>
 
     <a id="back-to-top" href="#top" title="回到頂端">🔝</a>
 
-    <script src="./config.js"></script> 
+    <script src="./config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const campusMapApp = {
@@ -301,42 +370,67 @@
                 tableContainerEl: document.getElementById("table-container"),
                 theadRow: document.getElementById("table-head-row"),
                 tbody: document.getElementById("space-tbody"),
-                
                 spaceTableEl: document.getElementById("space-table"),
                 floatingHeaderContainerEl: document.getElementById("floating-header-container"),
                 floatingHeaderRow: document.getElementById("floating-header-row"),
-
                 // 新增篩選器 DOM 元素
                 campusFilterEl: document.getElementById("campus-filter"),
                 buildingFilterEl: document.getElementById("building-filter"),
-                
                 // *新增: 回到頂端按鈕 DOM 元素*
                 backToTopBtn: document.getElementById("back-to-top"),
-
 
                 // --- State / Constants ---
                 supabaseClient: null,
                 currentData: [],
                 currentKeyword: "",
-                sortConfig: { key: 'SpaceNo', direction: 1 },
+                sortConfig: {
+                    key: 'SpaceNo',
+                    direction: 1
+                },
                 EXCLUDED_COLUMNS: ['sID'],
                 COLUMN_DISPLAY_NAMES: {
-                    'SpaceNo': '空間編號', 'SpaceName': '空間名稱', 'CampusNo': '校區名稱', 
-                    'BuildingNo': '所屬樓棟', 'FloorNo': '所在樓層', 'PicNo': '圖片編號'
+                    'SpaceNo': '空間編號',
+                    'SpaceName': '空間名稱',
+                    'CampusNo': '校區名稱',
+                    'BuildingNo': '所屬樓棟',
+                    'FloorNo': '所在樓層',
+                    'PicNo': '圖片編號'
                 },
                 SELECT_COLUMNS: 'sID,SpaceNo,SpaceName,CampusNo,BuildingNo,FloorNo,PicNo',
                 MAX_ROW_LIMIT: 5000,
-                
                 CAMPUS_MAP: Object.freeze({
-                    '1': '中央校區(校本部)', '2': '介仁校區(人社院)', '3': '建國校區(慈科大)'
+                    '1': '中央校區(校本部)',
+                    '2': '介仁校區(人社院)',
+                    '3': '建國校區(慈科大)'
                 }),
-                
                 BUILDING_MAP: Object.freeze({
-                    'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟',
-                    'G': 'G 棟', 'H': 'H 棟', 'I': 'I 棟', 'J': 'J 棟', 'K': 'K 棟', 'L': 'L 棟',
-                    'M': 'M 棟', 'N': 'N 棟', 'O': 'O 棟', 'P': 'P 棟', 'Q': 'Q 棟', 'R': 'R 棟',
-                    'S': 'S 棟', 'T': 'T 棟', 'U': 'U 棟', 'V': 'V 棟', 'W': 'W 棟', 'X': 'X 棟',
-                    'Y': 'Y 棟', 'Z': 'Z 棟', '01': '行政大樓',
+                    'A': 'A 棟',
+                    'B': 'B 棟',
+                    'C': 'C 棟',
+                    'D': 'D 棟',
+                    'E': 'E 棟',
+                    'F': 'F 棟',
+                    'G': 'G 棟',
+                    'H': 'H 棟',
+                    'I': 'I 棟',
+                    'J': 'J 棟',
+                    'K': 'K 棟',
+                    'L': 'L 棟',
+                    'M': 'M 棟',
+                    'N': 'N 棟',
+                    'O': 'O 棟',
+                    'P': 'P 棟',
+                    'Q': 'Q 棟',
+                    'R': 'R 棟',
+                    'S': 'S 棟',
+                    'T': 'T 棟',
+                    'U': 'U 棟',
+                    'V': 'V 棟',
+                    'W': 'W 棟',
+                    'X': 'X 棟',
+                    'Y': 'Y 棟',
+                    'Z': 'Z 棟',
+                    '01': '行政大樓',
                 }),
 
                 // --- Methods ---
@@ -346,13 +440,13 @@
                         this.errorEl.textContent = "請確認 config.js 檔案存在且已正確載入。";
                         return;
                     }
-                    
+
                     this.statusEl.textContent = "狀態: 正在連線至 Supabase...";
                     this.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    
+
                     this.populateFilters();
                     this.addEventListeners();
-                    this.loadFromURL(); 
+                    this.loadFromURL();
                 },
 
                 addEventListeners() {
@@ -366,10 +460,9 @@
                     this.limitBtn.addEventListener("click", () => this.loadSpaces(this.currentKeyword, 10));
                     this.searchInput.addEventListener("keyup", e => e.key === "Enter" && this.loadSpaces(e.target.value));
                     this.searchInput.addEventListener("input", () => this.toggleSearchActions(this.searchInput.value.trim() !== ""));
-                    
                     this.campusFilterEl.addEventListener("change", () => this.loadSpaces(this.searchInput.value));
                     this.buildingFilterEl.addEventListener("change", () => this.loadSpaces(this.searchInput.value));
-                    
+
                     const sortHandler = (e) => {
                         const th = e.target.closest('th');
                         if (th && th.dataset.col === 'SpaceNo') {
@@ -377,23 +470,23 @@
                             this.handleSort(th.dataset.col, highlightID);
                         }
                     };
-
                     this.theadRow.addEventListener('click', sortHandler);
                     this.floatingHeaderRow.addEventListener('click', sortHandler);
-                    
-                    // *更新: 滾動事件監聽器*
+
+                    // 更新: 滾動事件監聽器
                     window.addEventListener('scroll', () => {
-                        this.handleFloatingHeader(); 
-                        this.handleScroll(); // *呼叫處理 Back to Top 按鈕的函式*
+                        this.handleFloatingHeader();
+                        this.handleScroll(); // 呼叫處理 Back to Top 按鈕的函式
                     });
+
                     window.addEventListener('resize', () => {
                         this.syncHeaderWidths();
                         this.handleFloatingHeader();
                     });
-                    
-                    // *新增: 處理 Back to Top 按鈕點擊事件*
+
+                    // 新增: 處理 Back to Top 按鈕點擊事件
                     this.backToTopBtn.addEventListener("click", (e) => {
-                        e.preventDefault(); 
+                        e.preventDefault();
                         window.scrollTo({
                             top: 0,
                             behavior: 'smooth' // 平滑滾動
@@ -401,17 +494,16 @@
                     });
                 },
 
-                // *新增: 處理回到頂端按鈕的顯示/隱藏*
+                // 新增: 處理回到頂端按鈕的顯示/隱藏
                 handleScroll() {
                     const scrollThreshold = 300; // 向下滾動超過 300px 時顯示按鈕
-                    
                     if (window.scrollY > scrollThreshold) {
                         this.backToTopBtn.style.display = 'block';
                     } else {
                         this.backToTopBtn.style.display = 'none';
                     }
                 },
-                
+
                 populateFilters() {
                     let campusOptions = '<option value="">-- 所有校區 --</option>';
                     Object.keys(this.CAMPUS_MAP).forEach(key => {
@@ -430,27 +522,26 @@
                     const urlParams = new URLSearchParams(window.location.search);
                     const returnKeyword = urlParams.get('keyword');
                     const highlightID = urlParams.get('highlightID');
-                    
                     const returnCampus = urlParams.get('campus');
                     const returnBuilding = urlParams.get('building');
-                    
+
                     if (returnCampus) this.campusFilterEl.value = returnCampus;
                     if (returnBuilding) this.buildingFilterEl.value = returnBuilding;
-                    
-                    
+
                     if (returnKeyword || returnCampus || returnBuilding) {
                         this.searchInput.value = returnKeyword || "";
-                        this.toggleSearchActions(returnKeyword.trim() !== "");
-                        this.loadSpaces(returnKeyword, 0, highlightID); 
+                        this.toggleSearchActions(returnKeyword ? returnKeyword.trim() !== "" : true);
+                        this.loadSpaces(returnKeyword, 0, highlightID);
                     } else {
                         this.toggleSearchActions(false);
-                        this.loadSpaces("", 0); 
+                        this.loadSpaces("", 0);
                     }
                 },
-                
-                toggleSearchActions(hasKeyword) {
-                    this.limitBtn.style.display = hasKeyword ? 'inline-block' : 'none';
-                    this.resetBtn.style.display = 'inline-block'; 
+
+                toggleSearchActions(hasKeywordOrFilter) {
+                    // 只要有關鍵字就顯示 limit 按钮，只要有篩選或關鍵字就顯示 reset 按钮
+                    this.limitBtn.style.display = (this.searchInput.value.trim() !== "") ? 'inline-block' : 'none';
+                    this.resetBtn.style.display = 'inline-block';
                 },
 
                 cleanSpaceData(data) {
@@ -462,7 +553,7 @@
                         PicNo: String(item.PicNo || '').trim(),
                     }));
                 },
-                
+
                 syncHeaderWidths() {
                     if (!this.spaceTableEl || !this.floatingHeaderContainerEl || this.tableContainerEl.style.display === "none") return;
 
@@ -471,28 +562,28 @@
                     const floatingHeaderCells = this.floatingHeaderRow.children;
 
                     if (originalHeaderCells.length === 0) return;
-                    
+
                     const tableContainerRect = originalTableContainer.getBoundingClientRect();
                     const tableContainerScrollLeft = originalTableContainer.scrollLeft;
-                    
+
                     this.floatingHeaderContainerEl.style.width = `${tableContainerRect.width}px`;
                     document.getElementById("floating-header-table").style.marginLeft = `-${tableContainerScrollLeft}px`;
 
                     for (let i = 0; i < originalHeaderCells.length; i++) {
                         const originalTh = originalHeaderCells[i];
                         const floatingTh = floatingHeaderCells[i];
-                        
                         const width = window.getComputedStyle(originalTh).width;
+
                         if (floatingTh) {
                             floatingTh.style.width = width;
                             floatingTh.style.minWidth = width;
                         }
                     }
-                    
+
                     const wrapperPaddingLeft = window.getComputedStyle(document.querySelector('.main-content-wrapper')).paddingLeft;
                     this.floatingHeaderContainerEl.style.left = wrapperPaddingLeft;
                 },
-                
+
                 handleFloatingHeader() {
                     if (!this.spaceTableEl || this.tableContainerEl.style.display === "none") return;
 
@@ -502,7 +593,7 @@
 
                     if (tableTop < 0 && tableBottom > headerHeight) {
                         if (this.floatingHeaderContainerEl.style.display === "none") {
-                            this.syncHeaderWidths(); 
+                            this.syncHeaderWidths();
                             this.floatingHeaderContainerEl.style.display = "block";
                         }
                     } else {
@@ -512,12 +603,11 @@
                     }
                 },
 
-
                 renderTable(data, highlightID = null) {
                     this.theadRow.innerHTML = "";
-                    this.floatingHeaderRow.innerHTML = ""; 
+                    this.floatingHeaderRow.innerHTML = "";
                     this.tbody.innerHTML = "";
-                    
+
                     if (!data || data.length === 0) {
                         this.tableContainerEl.style.display = "none";
                         this.floatingHeaderContainerEl.style.display = "none";
@@ -525,38 +615,44 @@
                     }
 
                     this.tableContainerEl.style.display = "block";
+
                     const visibleColumns = Object.keys(data[0]).filter(col => !this.EXCLUDED_COLUMNS.includes(col));
 
                     // --- Render Header (主表頭和浮動表頭同時渲染) ---
                     const headerHTML = visibleColumns.map(col => {
                         const isSpaceNo = col === "SpaceNo";
                         const isSortKey = this.sortConfig.key === col;
-                        let sortIndicator = '';
-                        let sortHintText = '';
-                        
+                        let indicatorHTML = '';
+
                         if (isSpaceNo) {
-                            sortHintText = '(點擊排序)';
                             if (isSortKey) {
-                                sortIndicator = this.sortConfig.direction === 1 ? '⬆️' : '⬇️';
-                                sortHintText = '';
+                                // 決定 sort-indicator 容器的類別 (asc 或 desc)
+                                const sortClass = this.sortConfig.direction === 1 ? 'asc' : 'desc';
+
+                                // ******** 替換回三角形符號 ▴▾ ********
+                                indicatorHTML = `
+                                    <span class="sort-indicator ${sortClass}">
+                                        <span class="sort-arrow arrow-up">&#9652;</span> 
+                                        <span class="sort-arrow arrow-down">&#9662;</span> 
+                                    </span>`;
+                                // ***************************************
+                            } else {
+                                // 未排序時，顯示提示文字
+                                indicatorHTML = '<span class="sort-hint">(點擊排序)</span>';
                             }
                         }
-                        
+
                         const displayText = this.COLUMN_DISPLAY_NAMES[col] || col;
-                        
-                        return `<th scope="col" data-col="${col}">
-                            ${displayText} 
-                            <span class="sort-hint">${sortHintText || sortIndicator}</span>
-                        </th>`;
+                        return `<th scope="col" data-col="${col}"> ${displayText} ${indicatorHTML} </th>`;
                     }).join('');
-                    
+
                     this.theadRow.innerHTML = headerHTML;
                     this.floatingHeaderRow.innerHTML = headerHTML;
-                    
+
                     // --- Render Body ---
                     const bodyHTML = data.map(row => {
                         const highlightClass = (highlightID && row.sID == highlightID) ? 'highlight-row' : '';
-                        
+
                         const cellsHTML = visibleColumns.map(col => {
                             const cellValue = String(row[col] ?? "").trim();
                             let cellContent = cellValue;
@@ -577,46 +673,43 @@
                                     }
                                     break;
                             }
-                            
+
                             if (col === "SpaceName" && row.PicNo) {
                                 const currentKeyword = this.searchInput.value;
                                 const currentCampus = this.campusFilterEl.value;
                                 const currentBuilding = this.buildingFilterEl.value;
                                 const sID = row.sID;
-                                
+
                                 // 更新 Details 頁面的連結，帶上所有狀態參數
                                 const href = `Details.html?sID=${encodeURIComponent(sID)}&keyword=${encodeURIComponent(currentKeyword || "")}&campus=${encodeURIComponent(currentCampus)}&building=${encodeURIComponent(currentBuilding)}`;
-                                
-                                cellTitle = `點擊查看 ${cellValue} 的詳細資料及平面圖 (編號: ${row.PicNo})`;
+                                cellTitle = `點擊查看 ${cellContent} 的詳細資料及平面圖 (編號: ${row.PicNo})`;
                                 htmlContent = `<a href="${href}" title="${cellTitle}">${cellContent}</a>`;
                             } else {
-                                cellTitle = cellContent; 
+                                cellTitle = cellContent;
                                 htmlContent = cellContent;
                             }
 
                             return `<td data-col="${col}" title="${cellTitle}">${htmlContent}</td>`;
                         }).join('');
-                        
+
                         return `<tr class="${highlightClass}">${cellsHTML}</tr>`;
                     }).join('');
 
                     this.tbody.innerHTML = bodyHTML;
-                    
                     this.syncHeaderWidths();
-                    this.handleFloatingHeader(); 
+                    this.handleFloatingHeader();
                 },
-                
+
                 naturalCompare(a, b) {
                     if (a === b) return 0;
                     const re = /(\d+)/g;
                     const aParts = String(a || '').split(re).filter(Boolean);
                     const bParts = String(b || '').split(re).filter(Boolean);
-
                     const len = Math.max(aParts.length, bParts.length);
+
                     for (let i = 0; i < len; i++) {
                         const aPart = aParts[i] || '';
                         const bPart = bParts[i] || '';
-
                         const isANum = !isNaN(Number(aPart));
                         const isBNum = !isNaN(Number(bPart));
 
@@ -632,32 +725,35 @@
                 },
 
                 handleSort(key, highlightID = null) {
-                    if (key !== 'SpaceNo') return;
+                    if (key !== 'SpaceNo') return; // 僅允許 SpaceNo 排序
 
                     this.sortConfig.direction = (this.sortConfig.key === key) ? this.sortConfig.direction * -1 : 1;
                     this.sortConfig.key = key;
-                    
+
                     let highlightedItem = null;
                     let sortableData = [...this.currentData];
 
                     if (highlightID) {
                         const highlightIndex = sortableData.findIndex(item => item.sID == highlightID);
                         if (highlightIndex > -1) {
+                            // 將高亮項目從列表中移除
                             highlightedItem = sortableData.splice(highlightIndex, 1)[0];
                         }
                     }
 
                     sortableData.sort((a, b) => {
+                        // 使用自然排序法進行比較
                         const comparison = this.naturalCompare(a[key], b[key]);
                         return comparison * this.sortConfig.direction;
                     });
-                    
+
                     if (highlightedItem) {
+                        // 將高亮項目插回列表的最前面
                         sortableData.unshift(highlightedItem);
                     }
-                    
+
                     this.currentData = sortableData;
-                    this.renderTable(this.currentData, highlightID); 
+                    this.renderTable(this.currentData, highlightID);
                 },
 
                 async loadSpaces(keyword = "", limitCount = 0, highlightID = null) {
@@ -668,10 +764,9 @@
 
                     const selectedCampus = this.campusFilterEl.value;
                     const selectedBuilding = this.buildingFilterEl.value;
-
                     this.currentKeyword = keyword.trim();
+
                     this.toggleSearchActions(this.currentKeyword !== "" || selectedCampus !== "" || selectedBuilding !== "");
-                    
                     this.floatingHeaderContainerEl.style.display = "none";
 
                     let query = this.supabaseClient.from("TblSpace").select(this.SELECT_COLUMNS);
@@ -682,7 +777,7 @@
                         const orFilter = searchFields.map(field => `${field}.ilike.%${this.currentKeyword}%`).join(',');
                         query = query.or(orFilter);
                     }
-                    
+
                     // --- 2. 添加校區篩選條件 ---
                     if (selectedCampus) {
                         query = query.eq('CampusNo', selectedCampus);
@@ -693,41 +788,44 @@
                         query = query.eq('BuildingNo', selectedBuilding);
                     }
 
-
                     query = query.limit(limitCount > 0 ? limitCount : this.MAX_ROW_LIMIT);
 
-                    // *更新 URL 參數，以便重新整理或複製連結時保持篩選狀態*
+                    // 更新 URL 參數，以便重新整理或複製連結時保持篩選狀態
                     const newParams = new URLSearchParams();
                     if (this.currentKeyword) newParams.set('keyword', this.currentKeyword);
                     if (selectedCampus) newParams.set('campus', selectedCampus);
                     if (selectedBuilding) newParams.set('building', selectedBuilding);
                     if (highlightID) newParams.set('highlightID', highlightID);
-                    
                     const newUrl = `${window.location.pathname}?${newParams.toString()}`;
                     window.history.replaceState(null, '', newUrl);
 
-
                     try {
-                        const { data, error } = await query;
+                        const {
+                            data,
+                            error
+                        } = await query;
 
                         if (error) throw error;
 
                         if (!data || data.length === 0) {
-                            const filterText = (this.currentKeyword ? `與「${this.currentKeyword}」相關的` : "") + 
-                                                (selectedCampus ? ` (校區: ${this.CAMPUS_MAP[selectedCampus] || selectedCampus})` : "") +
-                                                (selectedBuilding ? ` (樓棟: ${this.BUILDING_MAP[selectedBuilding] || selectedBuilding})` : "");
-                            
+                            const filterText = (this.currentKeyword ? `與「${this.currentKeyword}」相關的` : "") +
+                                (selectedCampus ? ` (校區: ${this.CAMPUS_MAP[selectedCampus] || selectedCampus})` : "") +
+                                (selectedBuilding ? ` (樓棟: ${this.BUILDING_MAP[selectedBuilding] || selectedBuilding})` : "");
+
                             this.statusEl.textContent = `狀態: 找不到${filterText} 資料。`;
                             this.renderTable([]);
                             return;
                         }
-                        
+
                         this.statusEl.textContent = `狀態: 讀取成功，共取得 ${data.length} 筆資料`;
                         this.currentData = this.cleanSpaceData(data);
-                        
+
                         // 確保在有搜尋或篩選時，如果排序不是 SpaceNo，則重設為 SpaceNo 升序
                         if (this.sortConfig.key !== 'SpaceNo') {
-                            this.sortConfig = { key: 'SpaceNo', direction: 1 };
+                            this.sortConfig = {
+                                key: 'SpaceNo',
+                                direction: 1
+                            };
                         }
 
                         this.handleSort(this.sortConfig.key, highlightID);
