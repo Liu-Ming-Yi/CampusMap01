@@ -2,16 +2,23 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>Supabase 測試：TblSpace 查詢與排序 (凍結行與列)</title>
+    <title>Supabase 測試：TblSpace 查詢與排序 (浮動表頭可點擊)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" /> 
     
     <style>
         /* 基礎樣式 */
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            margin: 20px;
+            margin: 0; 
             padding: 0;
             background-color: #f7f7f7;
+        }
+
+        /* 內容容器：定義主體寬度，並提供 20px 邊距 */
+        .main-content-wrapper {
+            max-width: 100%;
+            padding: 0 20px; 
+            margin: 20px auto; 
         }
         
         h1 {
@@ -30,6 +37,7 @@
             white-space: pre-wrap;
         }
         
+        /* 搜尋欄位樣式 */
         .search-bar {
             margin: 10px 0 20px 0;
             display: flex; 
@@ -41,13 +49,29 @@
             width: 100%; 
             font-weight: 600;
         }
-        .search-bar input {
+        .search-bar label[for="campus-filter"],
+        .search-bar label[for="building-filter"] {
+            width: auto; 
+            font-weight: 500;
+            margin-left: 10px; 
+        }
+
+        .search-bar input,
+        .search-bar select { /* 新增 select 樣式 */
             padding: 8px; 
             border-radius: 4px;
             border: 1px solid #ccc;
             flex-grow: 1; 
             min-width: 200px;
+            box-sizing: border-box; /* 確保 padding 不會撐大元件 */
+            background-color: #fff;
         }
+        .search-bar select {
+            flex-grow: 0;
+            min-width: 120px;
+            cursor: pointer;
+        }
+
         .search-bar button {
             padding: 8px 15px;
             border-radius: 4px;
@@ -63,77 +87,111 @@
         }
 
         /* ------------------------------------------- */
-        /* 表格樣式 (凍結功能核心) */
+        /* 浮動表頭樣式 */
+        /* ------------------------------------------- */
+
+        .floating-header-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            overflow: hidden; 
+            background-color: #fff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+            display: none; 
+        }
+        .floating-header {
+            width: 100%; 
+            min-width: 800px; 
+            border-collapse: collapse;
+            table-layout: fixed;
+            background-color: #f0f0f0;
+        }
+        .floating-header thead {
+             background: none; 
+        }
+        
+        /* ------------------------------------------- */
+        /* 表格樣式 - 修正長文本溢出 */
         /* ------------------------------------------- */
         
         .table-container { 
             width: 100%;
-            /* *** 恢復固定高度，以允許行凍結 (表頭) *** */
-            height: calc(100vh - 250px); 
-            max-width: 100%; 
-            /* *** 恢復滾動：允許水平和垂直滾動條出現 (這是行凍結的必要條件) *** */
-            overflow: auto; 
             margin-top: 20px;
-            border: 1px solid #ddd; 
+            border: none; 
+            overflow-x: auto; 
+            overflow-y: hidden;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08); 
         }
 
         table {
             width: 100%;
             min-width: 800px; 
             border-collapse: collapse; 
-            background: #fff;
+            background: none; 
             table-layout: fixed; 
         }
         
         th, td {
             padding: 10px;
-            border: 1px solid #ddd; 
+            border: none; 
             font-size: 0.9rem;
             text-align: left;
-            white-space: nowrap;
+            
+            white-space: nowrap; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
         }
         
-        /* 凍結表頭 (行) - 重新設置 sticky */
-        thead th {
-            position: sticky; /* 恢復 sticky 屬性 */
-            top: 0; /* 固定在頂部 0px 的位置 */
-            background: #f0f0f0; 
-            z-index: 10; 
+        /* 欄位寬度鎖定 */
+        th[data-col="SpaceName"], td[data-col="SpaceName"] {
+            max-width: 250px; 
+            width: 250px; 
         }
-        
-        /* 凍結第一欄 (列) - 空間編號 */
-        td:nth-child(1) {
-            position: sticky;
-            left: 0; 
-            width: 120px; 
-            min-width: 120px;
-            background: #fff; /* 白色背景 (無色效果) */
-            z-index: 5; 
+        th[data-col="CampusNo"], td[data-col="CampusNo"] {
+            max-width: 150px; 
+            width: 150px; 
         }
-
-        /* 確保凍結的表頭和凍結的列交叉點 (同時 sticky) */
-        th[data-col="SpaceNo"] {
-            position: sticky; 
-            left: 0; 
+        th[data-col="SpaceNo"], td[data-col="SpaceNo"] {
+            max-width: 120px;
             width: 120px;
-            min-width: 120px;
-            background: #f0f0f0; 
-            z-index: 15; /* 最高 z-index 確保它位於頂部和最左側 */
-            cursor: pointer;
-        }
-        th[data-col="SpaceNo"]:hover {
-            background-color: #e0e0e0; 
         }
 
+        /* 底部細線作為分隔線 */
+        #space-table > tbody > tr > td {
+            border-bottom: 1px solid #eee; 
+        }
+        
+        #space-table > tbody > tr:last-child > td {
+            border-bottom: none; 
+        }
+        
+        /* 原表頭樣式 */
+        #space-table > thead > tr > th {
+            background: #f0f0f0; 
+            user-select: none;
+            transition: background-color 0.2s; 
+            border-bottom: 2px solid #ddd; 
+        }
+        
+        th[data-col="SpaceNo"] {
+            cursor: pointer; /* 統一在這裡設置可點擊游標 */
+        }
+        
+        th[data-col="SpaceNo"]:hover {
+            background-color: #d8e6f7; 
+        }
+        
         .highlight-row { 
             background-color: #fff9c4 !important; 
             font-weight: bold;
         }
         
         .sort-hint {
-            font-size: 0.8em;
-            color: #555; 
-            margin-left: 5px;
+            font-size: 1em; 
+            margin-left: 8px;
             font-weight: normal;
         }
         
@@ -148,34 +206,86 @@
             text-decoration: underline; 
         }
         
+        /* ------------------------------------------- */
+        /* 新增: 回到頂端按鈕樣式 */
+        /* ------------------------------------------- */
+        #back-to-top {
+            display: none; /* 預設隱藏 */
+            position: fixed; /* 固定位置 */
+            bottom: 20px; /* 距離底部 20px */
+            right: 20px; /* 距離右側 20px */
+            z-index: 1000; /* 確保它在最上層 */
+            
+            /* 外觀設計 */
+            width: 45px;
+            height: 45px;
+            line-height: 45px;
+            text-align: center;
+            font-size: 1.5rem; /* 使用 🔝 emoji，保持足夠大小 */
+            background-color: rgba(0, 123, 255, 0.8); /* 藍色背景，帶透明度 */
+            color: white;
+            border-radius: 50%; /* 圓形按鈕 */
+            text-decoration: none; /* 移除下劃線 */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: background-color 0.3s, opacity 0.3s;
+        }
+
+        #back-to-top:hover {
+            background-color: #007bff; /* 滑鼠懸停時顏色加深 */
+            opacity: 1;
+        }
+        
     </style>
 </head>
 <body>
-    <h1>Supabase 測試：TblSpace 查詢</h1>
-
-    <div id="status">狀態：準備連線至 Supabase...</div>
-    <div id="error"></div>
-
-    <div class="search-bar">
-        <label for="search-input">請輸入空間名稱、編號或圖片編號：</label>
-        <input type="text" id="search-input" placeholder="例如：會議室, A102" />
-        <button id="search-btn">搜尋</button>
-        
-        <button id="limit-btn" style="display:none;">顯示前 10 筆相關結果</button> 
-        <button id="reset-btn" style="display:none;">返回所有資料</button> 
-    </div>
     
-    <div class="table-container" id="table-container" style="display:none;">
-        <table id="space-table">
+    <div class="floating-header-container" id="floating-header-container">
+        <table class="floating-header" id="floating-header-table">
             <thead>
-                <tr id="table-head-row"></tr>
+                <tr id="floating-header-row"></tr>
             </thead>
-            <tbody id="space-tbody"></tbody>
         </table>
     </div>
 
-    <script src="./config.js"></script> 
+    <div class="main-content-wrapper"> 
+        <h1>Supabase 測試：TblSpace 查詢</h1>
 
+        <div id="status">狀態：準備連線至 Supabase...</div>
+        <div id="error"></div>
+
+        <div class="search-bar">
+            <label for="search-input">請輸入空間名稱、編號或圖片編號：</label>
+            <input type="text" id="search-input" placeholder="例如：會議室, A102" />
+            <button id="search-btn">搜尋</button>
+
+            <label for="campus-filter" style="width: auto; font-weight: normal;">校區篩選：</label>
+            <select id="campus-filter">
+                <option value="">-- 所有校區 --</option>
+                </select>
+            
+            <label for="building-filter" style="width: auto; font-weight: normal;">樓棟篩選：</label>
+            <select id="building-filter">
+                <option value="">-- 所有樓棟 --</option>
+                </select>
+            
+            <button id="limit-btn" style="display:none;">顯示前 10 筆相關結果</button> 
+            <button id="reset-btn" style="display:none;">重設 / 返回所有資料</button> 
+        </div>
+        
+        <div class="table-container" id="table-container" style="display:none;">
+            <table id="space-table">
+                <thead>
+                    <tr id="table-head-row"></tr>
+                </thead>
+                <tbody id="space-tbody"></tbody>
+            </table>
+        </div>
+    </div> 
+
+    <a id="back-to-top" href="#top" title="回到頂端">🔝</a>
+
+    <script src="./config.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
     <script>
@@ -191,30 +301,34 @@
                 tableContainerEl: document.getElementById("table-container"),
                 theadRow: document.getElementById("table-head-row"),
                 tbody: document.getElementById("space-tbody"),
+                
+                spaceTableEl: document.getElementById("space-table"),
+                floatingHeaderContainerEl: document.getElementById("floating-header-container"),
+                floatingHeaderRow: document.getElementById("floating-header-row"),
 
-                // --- State ---
+                // 新增篩選器 DOM 元素
+                campusFilterEl: document.getElementById("campus-filter"),
+                buildingFilterEl: document.getElementById("building-filter"),
+                
+                // *新增: 回到頂端按鈕 DOM 元素*
+                backToTopBtn: document.getElementById("back-to-top"),
+
+
+                // --- State / Constants ---
                 supabaseClient: null,
                 currentData: [],
                 currentKeyword: "",
                 sortConfig: { key: 'SpaceNo', direction: 1 },
-                
-                // --- Constants ---
                 EXCLUDED_COLUMNS: ['sID'],
                 COLUMN_DISPLAY_NAMES: {
-                    'SpaceNo': '空間編號',
-                    'SpaceName': '空間名稱',
-                    'CampusNo': '校區名稱',
-                    'BuildingNo': '所屬樓棟',
-                    'FloorNo': '所在樓層',
-                    'PicNo': '圖片編號'
+                    'SpaceNo': '空間編號', 'SpaceName': '空間名稱', 'CampusNo': '校區名稱', 
+                    'BuildingNo': '所屬樓棟', 'FloorNo': '所在樓層', 'PicNo': '圖片編號'
                 },
                 SELECT_COLUMNS: 'sID,SpaceNo,SpaceName,CampusNo,BuildingNo,FloorNo,PicNo',
                 MAX_ROW_LIMIT: 5000,
                 
                 CAMPUS_MAP: Object.freeze({
-                    '1': '中央校區(校本部)',
-                    '2': '介仁校區(人社院)',
-                    '3': '建國校區(慈科大)'
+                    '1': '中央校區(校本部)', '2': '介仁校區(人社院)', '3': '建國校區(慈科大)'
                 }),
                 
                 BUILDING_MAP: Object.freeze({
@@ -222,8 +336,7 @@
                     'G': 'G 棟', 'H': 'H 棟', 'I': 'I 棟', 'J': 'J 棟', 'K': 'K 棟', 'L': 'L 棟',
                     'M': 'M 棟', 'N': 'N 棟', 'O': 'O 棟', 'P': 'P 棟', 'Q': 'Q 棟', 'R': 'R 棟',
                     'S': 'S 棟', 'T': 'T 棟', 'U': 'U 棟', 'V': 'V 棟', 'W': 'W 棟', 'X': 'X 棟',
-                    'Y': 'Y 棟', 'Z': 'Z 棟',
-                    '01': '行政大樓',
+                    'Y': 'Y 棟', 'Z': 'Z 棟', '01': '行政大樓',
                 }),
 
                 // --- Methods ---
@@ -237,30 +350,80 @@
                     this.statusEl.textContent = "狀態: 正在連線至 Supabase...";
                     this.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     
+                    this.populateFilters();
                     this.addEventListeners();
-                    this.loadFromURL();
+                    this.loadFromURL(); 
                 },
 
                 addEventListeners() {
                     this.searchBtn.addEventListener("click", () => this.loadSpaces(this.searchInput.value));
-                    this.resetBtn.addEventListener("click", () => window.location.href = window.location.pathname);
+                    this.resetBtn.addEventListener("click", () => {
+                        this.searchInput.value = "";
+                        this.campusFilterEl.value = "";
+                        this.buildingFilterEl.value = "";
+                        window.location.href = window.location.pathname; // 重設 URL 並重新載入全部資料
+                    });
                     this.limitBtn.addEventListener("click", () => this.loadSpaces(this.currentKeyword, 10));
                     this.searchInput.addEventListener("keyup", e => e.key === "Enter" && this.loadSpaces(e.target.value));
                     this.searchInput.addEventListener("input", () => this.toggleSearchActions(this.searchInput.value.trim() !== ""));
                     
-                    // 事件代理：只在 thead 上註冊一次事件監聽
-                    this.theadRow.addEventListener('click', (e) => {
+                    this.campusFilterEl.addEventListener("change", () => this.loadSpaces(this.searchInput.value));
+                    this.buildingFilterEl.addEventListener("change", () => this.loadSpaces(this.searchInput.value));
+                    
+                    const sortHandler = (e) => {
                         const th = e.target.closest('th');
                         if (th && th.dataset.col === 'SpaceNo') {
                             const highlightID = new URLSearchParams(window.location.search).get('highlightID');
                             this.handleSort(th.dataset.col, highlightID);
                         }
+                    };
+
+                    this.theadRow.addEventListener('click', sortHandler);
+                    this.floatingHeaderRow.addEventListener('click', sortHandler);
+                    
+                    // *更新: 滾動事件監聽器*
+                    window.addEventListener('scroll', () => {
+                        this.handleFloatingHeader(); 
+                        this.handleScroll(); // *呼叫處理 Back to Top 按鈕的函式*
+                    });
+                    window.addEventListener('resize', () => {
+                        this.syncHeaderWidths();
+                        this.handleFloatingHeader();
+                    });
+                    
+                    // *新增: 處理 Back to Top 按鈕點擊事件*
+                    this.backToTopBtn.addEventListener("click", (e) => {
+                        e.preventDefault(); 
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth' // 平滑滾動
+                        });
                     });
                 },
+
+                // *新增: 處理回到頂端按鈕的顯示/隱藏*
+                handleScroll() {
+                    const scrollThreshold = 300; // 向下滾動超過 300px 時顯示按鈕
+                    
+                    if (window.scrollY > scrollThreshold) {
+                        this.backToTopBtn.style.display = 'block';
+                    } else {
+                        this.backToTopBtn.style.display = 'none';
+                    }
+                },
                 
-                toggleSearchActions(hasKeyword) {
-                    this.limitBtn.style.display = hasKeyword ? 'inline-block' : 'none';
-                    this.resetBtn.style.display = hasKeyword ? 'inline-block' : 'none';
+                populateFilters() {
+                    let campusOptions = '<option value="">-- 所有校區 --</option>';
+                    Object.keys(this.CAMPUS_MAP).forEach(key => {
+                        campusOptions += `<option value="${key}">${this.CAMPUS_MAP[key]}</option>`;
+                    });
+                    this.campusFilterEl.innerHTML = campusOptions;
+
+                    let buildingOptions = '<option value="">-- 所有樓棟 --</option>';
+                    Object.keys(this.BUILDING_MAP).forEach(key => {
+                        buildingOptions += `<option value="${key}">${this.BUILDING_MAP[key]}</option>`;
+                    });
+                    this.buildingFilterEl.innerHTML = buildingOptions;
                 },
 
                 loadFromURL() {
@@ -268,8 +431,15 @@
                     const returnKeyword = urlParams.get('keyword');
                     const highlightID = urlParams.get('highlightID');
                     
-                    if (returnKeyword) {
-                        this.searchInput.value = returnKeyword;
+                    const returnCampus = urlParams.get('campus');
+                    const returnBuilding = urlParams.get('building');
+                    
+                    if (returnCampus) this.campusFilterEl.value = returnCampus;
+                    if (returnBuilding) this.buildingFilterEl.value = returnBuilding;
+                    
+                    
+                    if (returnKeyword || returnCampus || returnBuilding) {
+                        this.searchInput.value = returnKeyword || "";
                         this.toggleSearchActions(returnKeyword.trim() !== "");
                         this.loadSpaces(returnKeyword, 0, highlightID); 
                     } else {
@@ -278,6 +448,11 @@
                     }
                 },
                 
+                toggleSearchActions(hasKeyword) {
+                    this.limitBtn.style.display = hasKeyword ? 'inline-block' : 'none';
+                    this.resetBtn.style.display = 'inline-block'; 
+                },
+
                 cleanSpaceData(data) {
                     if (!data) return [];
                     return data.map(item => ({
@@ -287,20 +462,72 @@
                         PicNo: String(item.PicNo || '').trim(),
                     }));
                 },
+                
+                syncHeaderWidths() {
+                    if (!this.spaceTableEl || !this.floatingHeaderContainerEl || this.tableContainerEl.style.display === "none") return;
+
+                    const originalTableContainer = this.tableContainerEl;
+                    const originalHeaderCells = this.theadRow.children;
+                    const floatingHeaderCells = this.floatingHeaderRow.children;
+
+                    if (originalHeaderCells.length === 0) return;
+                    
+                    const tableContainerRect = originalTableContainer.getBoundingClientRect();
+                    const tableContainerScrollLeft = originalTableContainer.scrollLeft;
+                    
+                    this.floatingHeaderContainerEl.style.width = `${tableContainerRect.width}px`;
+                    document.getElementById("floating-header-table").style.marginLeft = `-${tableContainerScrollLeft}px`;
+
+                    for (let i = 0; i < originalHeaderCells.length; i++) {
+                        const originalTh = originalHeaderCells[i];
+                        const floatingTh = floatingHeaderCells[i];
+                        
+                        const width = window.getComputedStyle(originalTh).width;
+                        if (floatingTh) {
+                            floatingTh.style.width = width;
+                            floatingTh.style.minWidth = width;
+                        }
+                    }
+                    
+                    const wrapperPaddingLeft = window.getComputedStyle(document.querySelector('.main-content-wrapper')).paddingLeft;
+                    this.floatingHeaderContainerEl.style.left = wrapperPaddingLeft;
+                },
+                
+                handleFloatingHeader() {
+                    if (!this.spaceTableEl || this.tableContainerEl.style.display === "none") return;
+
+                    const tableTop = this.spaceTableEl.getBoundingClientRect().top;
+                    const tableBottom = this.spaceTableEl.getBoundingClientRect().bottom;
+                    const headerHeight = this.floatingHeaderContainerEl.offsetHeight || 45;
+
+                    if (tableTop < 0 && tableBottom > headerHeight) {
+                        if (this.floatingHeaderContainerEl.style.display === "none") {
+                            this.syncHeaderWidths(); 
+                            this.floatingHeaderContainerEl.style.display = "block";
+                        }
+                    } else {
+                        if (this.floatingHeaderContainerEl.style.display === "block") {
+                            this.floatingHeaderContainerEl.style.display = "none";
+                        }
+                    }
+                },
+
 
                 renderTable(data, highlightID = null) {
                     this.theadRow.innerHTML = "";
+                    this.floatingHeaderRow.innerHTML = ""; 
                     this.tbody.innerHTML = "";
-
+                    
                     if (!data || data.length === 0) {
                         this.tableContainerEl.style.display = "none";
+                        this.floatingHeaderContainerEl.style.display = "none";
                         return;
                     }
 
                     this.tableContainerEl.style.display = "block";
                     const visibleColumns = Object.keys(data[0]).filter(col => !this.EXCLUDED_COLUMNS.includes(col));
 
-                    // --- Render Header ---
+                    // --- Render Header (主表頭和浮動表頭同時渲染) ---
                     const headerHTML = visibleColumns.map(col => {
                         const isSpaceNo = col === "SpaceNo";
                         const isSortKey = this.sortConfig.key === col;
@@ -310,20 +537,21 @@
                         if (isSpaceNo) {
                             sortHintText = '(點擊排序)';
                             if (isSortKey) {
-                                // 使用標準 HTML 實體字元 &#x25B2; (▲) 和 &#x25BC; (▼)
-                                sortIndicator = this.sortConfig.direction === 1 ? '&#x25B2; (由小到大)' : '&#x25BC; (由大到小)';
+                                sortIndicator = this.sortConfig.direction === 1 ? '⬆️' : '⬇️';
                                 sortHintText = '';
                             }
                         }
                         
                         const displayText = this.COLUMN_DISPLAY_NAMES[col] || col;
                         
-                        return `<th scope="col" data-col="${col}" ${isSpaceNo ? 'style="cursor: pointer;"' : ''}>
+                        return `<th scope="col" data-col="${col}">
                             ${displayText} 
-                            <span class="sort-hint">${sortHintText || `<font color="#007bff">${sortIndicator}</font>`}</span>
+                            <span class="sort-hint">${sortHintText || sortIndicator}</span>
                         </th>`;
                     }).join('');
+                    
                     this.theadRow.innerHTML = headerHTML;
+                    this.floatingHeaderRow.innerHTML = headerHTML;
                     
                     // --- Render Body ---
                     const bodyHTML = data.map(row => {
@@ -334,7 +562,7 @@
                             let cellContent = cellValue;
                             let cellTitle = cellValue;
                             let htmlContent = cellValue;
-                            
+
                             switch (col) {
                                 case "CampusNo":
                                     cellContent = this.CAMPUS_MAP[cellValue] || cellValue;
@@ -352,21 +580,30 @@
                             
                             if (col === "SpaceName" && row.PicNo) {
                                 const currentKeyword = this.searchInput.value;
+                                const currentCampus = this.campusFilterEl.value;
+                                const currentBuilding = this.buildingFilterEl.value;
                                 const sID = row.sID;
-                                const href = `Details.html?sID=${encodeURIComponent(sID)}&keyword=${encodeURIComponent(currentKeyword)}`;
+                                
+                                // 更新 Details 頁面的連結，帶上所有狀態參數
+                                const href = `Details.html?sID=${encodeURIComponent(sID)}&keyword=${encodeURIComponent(currentKeyword || "")}&campus=${encodeURIComponent(currentCampus)}&building=${encodeURIComponent(currentBuilding)}`;
+                                
                                 cellTitle = `點擊查看 ${cellValue} 的詳細資料及平面圖 (編號: ${row.PicNo})`;
                                 htmlContent = `<a href="${href}" title="${cellTitle}">${cellContent}</a>`;
                             } else {
+                                cellTitle = cellContent; 
                                 htmlContent = cellContent;
                             }
 
-                            return `<td title="${cellTitle}">${htmlContent}</td>`;
+                            return `<td data-col="${col}" title="${cellTitle}">${htmlContent}</td>`;
                         }).join('');
                         
                         return `<tr class="${highlightClass}">${cellsHTML}</tr>`;
                     }).join('');
 
                     this.tbody.innerHTML = bodyHTML;
+                    
+                    this.syncHeaderWidths();
+                    this.handleFloatingHeader(); 
                 },
                 
                 naturalCompare(a, b) {
@@ -420,7 +657,7 @@
                     }
                     
                     this.currentData = sortableData;
-                    this.renderTable(this.currentData, highlightID);
+                    this.renderTable(this.currentData, highlightID); 
                 },
 
                 async loadSpaces(keyword = "", limitCount = 0, highlightID = null) {
@@ -429,18 +666,46 @@
                     this.tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">載入中...</td></tr>';
                     this.tableContainerEl.style.display = 'block';
 
+                    const selectedCampus = this.campusFilterEl.value;
+                    const selectedBuilding = this.buildingFilterEl.value;
+
                     this.currentKeyword = keyword.trim();
-                    this.toggleSearchActions(this.currentKeyword !== "");
+                    this.toggleSearchActions(this.currentKeyword !== "" || selectedCampus !== "" || selectedBuilding !== "");
+                    
+                    this.floatingHeaderContainerEl.style.display = "none";
 
                     let query = this.supabaseClient.from("TblSpace").select(this.SELECT_COLUMNS);
 
+                    // --- 1. 添加搜尋關鍵字條件 ---
                     if (this.currentKeyword) {
                         const searchFields = ['SpaceName', 'SpaceNo', 'PicNo'];
                         const orFilter = searchFields.map(field => `${field}.ilike.%${this.currentKeyword}%`).join(',');
                         query = query.or(orFilter);
                     }
+                    
+                    // --- 2. 添加校區篩選條件 ---
+                    if (selectedCampus) {
+                        query = query.eq('CampusNo', selectedCampus);
+                    }
+
+                    // --- 3. 添加樓棟篩選條件 ---
+                    if (selectedBuilding) {
+                        query = query.eq('BuildingNo', selectedBuilding);
+                    }
+
 
                     query = query.limit(limitCount > 0 ? limitCount : this.MAX_ROW_LIMIT);
+
+                    // *更新 URL 參數，以便重新整理或複製連結時保持篩選狀態*
+                    const newParams = new URLSearchParams();
+                    if (this.currentKeyword) newParams.set('keyword', this.currentKeyword);
+                    if (selectedCampus) newParams.set('campus', selectedCampus);
+                    if (selectedBuilding) newParams.set('building', selectedBuilding);
+                    if (highlightID) newParams.set('highlightID', highlightID);
+                    
+                    const newUrl = `${window.location.pathname}?${newParams.toString()}`;
+                    window.history.replaceState(null, '', newUrl);
+
 
                     try {
                         const { data, error } = await query;
@@ -448,7 +713,11 @@
                         if (error) throw error;
 
                         if (!data || data.length === 0) {
-                            this.statusEl.textContent = this.currentKeyword ? `狀態: 找不到與「${this.currentKeyword}」相關的資料` : "狀態: 資料庫中目前沒有資料。";
+                            const filterText = (this.currentKeyword ? `與「${this.currentKeyword}」相關的` : "") + 
+                                                (selectedCampus ? ` (校區: ${this.CAMPUS_MAP[selectedCampus] || selectedCampus})` : "") +
+                                                (selectedBuilding ? ` (樓棟: ${this.BUILDING_MAP[selectedBuilding] || selectedBuilding})` : "");
+                            
+                            this.statusEl.textContent = `狀態: 找不到${filterText} 資料。`;
                             this.renderTable([]);
                             return;
                         }
@@ -456,10 +725,9 @@
                         this.statusEl.textContent = `狀態: 讀取成功，共取得 ${data.length} 筆資料`;
                         this.currentData = this.cleanSpaceData(data);
                         
-                        if (!this.currentKeyword && this.sortConfig.key !== 'SpaceNo') {
+                        // 確保在有搜尋或篩選時，如果排序不是 SpaceNo，則重設為 SpaceNo 升序
+                        if (this.sortConfig.key !== 'SpaceNo') {
                             this.sortConfig = { key: 'SpaceNo', direction: 1 };
-                        } else if (this.currentKeyword && this.sortConfig.key !== 'SpaceNo') {
-                             this.sortConfig = { key: 'SpaceNo', direction: 1 };
                         }
 
                         this.handleSort(this.sortConfig.key, highlightID);
