@@ -100,7 +100,8 @@
             right: 0;
             z-index: 100;
             overflow: hidden;
-            background-color: #444; 
+            /* 統一浮動表頭背景色 */
+            background-color: #555; 
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
             display: none;
         }
@@ -178,29 +179,37 @@
         }
 
         /* =================================================== */
-        /* 深色按鈕標題欄樣式 (保留) */
+        /* 深色按鈕標題欄樣式 (統一靜態與 SpaceNo 樣式) */
         /* =================================================== */
         #space-table>thead>tr>th {
+            /* 統一背景色 */
             background: #555; 
+            /* 統一文字色 */
             color: #fff; 
             user-select: none;
             transition: background-color 0.2s;
-            border-bottom: none; 
-            box-shadow: inset 0 0 5px #555;
+            border-bottom: none;
         }
         
+        /* 確保浮動表頭文字顏色為白色 (加強，以防繼承問題) */
+        .floating-header th {
+            color: #fff !important;
+        }
+
         #space-table>thead>tr>th:not(:last-child) {
-            border-right: 1px solid #555; 
+            /* 邊框顏色要比背景色稍深，才能看到分隔 */
+            border-right: 1px solid #444; 
         }
 
         th[data-col="SpaceNo"] {
             cursor: pointer;
             padding-right: 25px;
         }
-
-        th[data-col="SpaceNo"]:hover,
-        .floating-header th[data-col="SpaceNo"]:hover {
-            background-color: #555;
+        
+        /* 統一懸停效果，應用於所有可點擊標題欄 (或整個表頭) */
+        th:hover,
+        .floating-header th:hover {
+            background-color: #777; /* 懸停時，顏色略微變亮 */
         }
 
         /* =================================================== */
@@ -212,36 +221,34 @@
             align-items: center;
             justify-content: center;
             /* 關鍵：極小的行高，讓符號緊密堆疊 */
-            line-height: 0.8; 
+            line-height: 0.8;
             margin-left: 5px;
-            vertical-align: middle; 
+            vertical-align: middle;
             /* 調整整個組件的位置，使其更居中 */
-            transform: translateY(-1px); 
+            transform: translateY(-1px);
         }
 
         /* 符號基礎樣式：統一大小，淡色 */
         .sort-arrow {
-            color: rgba(255, 255, 255, 0.4); 
+            color: rgba(255, 255, 255, 0.4);
             /* 增加符號大小 */
-            font-size: 1.0rem; 
+            font-size: 1.0rem;
             transition: color 0.15s;
             display: block;
         }
 
-        /* 由於三角形的基線與菱形不同，我們需要微調 transform 數值 */
-        
         /* 升序狀態下，向上三角形突出顯示 (▴) */
         .sort-indicator.asc .arrow-up {
-            color: #8ac0ff; 
+            color: #8ac0ff;
             /* 向上移動以貼合下方三角形尖端 */
-            transform: translateY(0.1em); 
+            transform: translateY(0.1em);
         }
 
         /* 降序狀態下，向下三角形突出顯示 (▾) */
         .sort-indicator.desc .arrow-down {
-            color: #8ac0ff; 
+            color: #8ac0ff;
             /* 向上移動以貼合上方三角形尖端 */
-            transform: translateY(-0.1em); 
+            transform: translateY(-0.1em);
         }
 
         /* 調整未選中時的兩個三角形，讓它們也貼合 */
@@ -258,7 +265,7 @@
             margin-left: 8px;
             font-weight: normal;
             line-height: 1;
-            color: #ddd; 
+            color: #ddd;
         }
 
         /* =================================================== */
@@ -282,7 +289,7 @@
         }
 
         /* ------------------------------------------- */
-        /* 回到頂端按鈕樣式 */
+        /* 回到頂端按鈕樣式 (已移除底線並修正顏色) */
         /* ------------------------------------------- */
         #back-to-top {
             display: none;
@@ -296,7 +303,13 @@
             text-align: center;
             font-size: 1.5rem;
             background-color: rgba(0, 123, 255, 0.8);
-            color: white;
+            
+            /* **【移除底線】** */
+            text-decoration: none; 
+            
+            /* **【修正符號顏色】** */
+            color: white; 
+            
             border-radius: 50%;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
             cursor: pointer;
@@ -629,13 +642,13 @@
                                 // 決定 sort-indicator 容器的類別 (asc 或 desc)
                                 const sortClass = this.sortConfig.direction === 1 ? 'asc' : 'desc';
 
-                                // ******** 替換回三角形符號 ▴▾ ********
+                                // 使用模板字串生成排序指示器 (修正了模板字串語法錯誤)
                                 indicatorHTML = `
                                     <span class="sort-indicator ${sortClass}">
-                                        <span class="sort-arrow arrow-up">&#9652;</span> 
-                                        <span class="sort-arrow arrow-down">&#9662;</span> 
+                                        <span class="sort-arrow arrow-up">&#9652;</span>
+                                        <span class="sort-arrow arrow-down">&#9662;</span>
                                     </span>`;
-                                // ***************************************
+
                             } else {
                                 // 未排序時，顯示提示文字
                                 indicatorHTML = '<span class="sort-hint">(點擊排序)</span>';
