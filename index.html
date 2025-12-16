@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>Supabase 空間查詢系統 (全欄位排序版)</title>
+    <title>Supabase 空間查詢系統</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; }
@@ -23,7 +23,6 @@
         table { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; }
         th, td { padding: 12px 10px; font-size: 0.9rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        /* 增加所有表頭的可點擊樣式 */
         th { cursor: pointer; position: relative; transition: background 0.2s; }
         th:hover { background-color: #666; }
         
@@ -80,6 +79,17 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // 自動生成 A-Z 的 Building Map
+            const generateBuildingMap = () => {
+                const map = { '01': '行政大樓' };
+                // A 是 65, Z 是 90
+                for (let i = 65; i <= 90; i++) {
+                    const letter = String.fromCharCode(i);
+                    map[letter] = `${letter} 棟`;
+                }
+                return map;
+            };
+
             const app = {
                 statusEl: document.getElementById("status"),
                 errorEl: document.getElementById("error"),
@@ -95,10 +105,10 @@
 
                 supabase: null,
                 currentData: [],
-                sortCol: 'SpaceNo', // 預設排序欄位
+                sortCol: 'SpaceNo', 
                 sortDir: 1, 
                 CAMPUS_MAP: { '1': '中央校區', '2': '介仁校區', '3': '建國校區' },
-                BUILDING_MAP: { 'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟', 'G': 'G 棟', 'H': 'H 棟', '01': '行政大樓' },
+                BUILDING_MAP: generateBuildingMap(), // 使用自動生成的 Map
                 COLS: ['SpaceNo', 'SpaceName', 'CampusNo', 'BuildingNo', 'FloorNo', 'PicNo'],
                 COL_NAMES: { 'SpaceNo': '空間編號', 'SpaceName': '空間名稱', 'CampusNo': '校區', 'BuildingNo': '樓棟', 'FloorNo': '樓層', 'PicNo': '圖片編號' },
 
@@ -115,7 +125,10 @@
                     this.campusFilter.innerHTML = cOpt;
 
                     let bOpt = '<option value="">-- 樓棟 --</option>';
-                    Object.entries(this.BUILDING_MAP).forEach(([k, v]) => bOpt += `<option value="${k}">${v}</option>`);
+                    // 將選單按字母排序顯示
+                    Object.entries(this.BUILDING_MAP)
+                        .sort((a, b) => a[0].localeCompare(b[0]))
+                        .forEach(([k, v]) => bOpt += `<option value="${k}">${v}</option>`);
                     this.buildingFilter.innerHTML = bOpt;
                 },
 
@@ -126,7 +139,6 @@
                     this.buildingFilter.onchange = () => this.fetchData(this.searchInput.value);
                     this.searchInput.onkeyup = (e) => e.key === 'Enter' && this.fetchData(this.searchInput.value);
 
-                    // 點擊事件
                     const handleHeaderClick = (e) => {
                         const th = e.target.closest('th');
                         if (th) {
@@ -173,19 +185,12 @@
                 },
 
                 sortAndRender(hID) {
-                    // 全欄位通用排序邏輯
                     this.currentData.sort((a, b) => {
-                        let valA = a[this.sortCol] || "";
-                        let valB = b[this.sortCol] || "";
-                        
-                        // 使用 localeCompare 處理 數字、中、英 混合排序
-                        return valA.toString().localeCompare(valB.toString(), undefined, {
-                            numeric: true,
-                            sensitivity: 'base'
-                        }) * this.sortDir;
+                        let valA = (a[this.sortCol] || "").toString();
+                        let valB = (b[this.sortCol] || "").toString();
+                        return valA.localeCompare(valB, undefined, { numeric: true }) * this.sortDir;
                     });
 
-                    // 置頂邏輯
                     if (hID) {
                         const idx = this.currentData.findIndex(i => String(i.sID) === String(hID));
                         if (idx > -1) {
@@ -197,12 +202,8 @@
                 },
 
                 render(hID) {
-                    // 生成帶有排序箭頭的表頭
                     const hHTML = this.COLS.map(c => {
-                        let activeClass = "";
-                        if (this.sortCol === c) {
-                            activeClass = this.sortDir === 1 ? 'active-asc' : 'active-desc';
-                        }
+                        let activeClass = (this.sortCol === c) ? (this.sortDir === 1 ? 'active-asc' : 'active-desc') : "";
                         const indicator = `<span class="sort-indicator ${activeClass}"><span class="sort-arrow arrow-up">▴</span><span class="sort-arrow arrow-down">▾</span></span>`;
                         return `<th data-col="${c}">${this.COL_NAMES[c]}${indicator}</th>`;
                     }).join('');
