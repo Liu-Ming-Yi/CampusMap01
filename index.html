@@ -5,14 +5,12 @@
     <title>Supabase 空間查詢系統</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        /* 基礎樣式 */
         body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; }
         .main-content-wrapper { max-width: 100%; padding: 0 20px; margin: 20px auto; }
         h1 { font-size: 1.5rem; margin-bottom: 10px; }
         #status { margin: 10px 0; color: #555; font-size: 0.9rem; }
         #error { color: #b00020; margin: 10px 0; }
 
-        /* 搜尋列 */
         .search-bar { margin: 10px 0 20px 0; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
         .search-bar label { font-weight: 600; width: 100%; }
         .search-bar select, .search-bar input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: #fff; }
@@ -20,48 +18,26 @@
         .search-bar button { padding: 8px 15px; border-radius: 4px; border: none; background-color: #007bff; color: #fff; cursor: pointer; }
         .search-bar button:hover { background-color: #0056b3; }
 
-        /* 浮動表頭容器 */
-        .floating-header-container {
-            position: fixed;
-            top: 0;
-            z-index: 100;
-            overflow: hidden;
-            background-color: #555;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            display: none;
-        }
-
-        /* 表格結構 */
+        .floating-header-container { position: fixed; top: 0; z-index: 100; overflow: hidden; background-color: #555; box-shadow: 0 4px 6px rgba(0,0,0,0.2); display: none; }
         .table-container { width: 100%; margin-top: 20px; overflow-x: auto; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
         table { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; }
         th, td { padding: 12px 10px; font-size: 0.9rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
-        /* 欄位寬度 */
         th[data-col="SpaceName"], td[data-col="SpaceName"] { width: 250px; }
         th[data-col="CampusNo"], td[data-col="CampusNo"] { width: 150px; }
-        th[data-col="SpaceNo"], td[data-col="SpaceNo"] { width: 130px; cursor: pointer; position: relative; }
+        th[data-col="SpaceNo"], td[data-col="SpaceNo"] { width: 130px; cursor: pointer; }
 
         thead tr, .floating-header-container tr { background: #555; color: #fff; }
         tbody tr { border-bottom: 1px solid #eee; }
 
-        /* 排序指示器樣式 */
-        .sort-indicator {
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            vertical-align: middle;
-            margin-left: 6px;
-            line-height: 0.7;
-        }
+        .sort-indicator { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin-left: 6px; line-height: 0.7; }
         .sort-arrow { color: rgba(255, 255, 255, 0.3); font-size: 0.9rem; }
-        /* 點擊後的高亮顏色 */
         .sort-indicator.asc .arrow-up { color: #8ac0ff; }
         .sort-indicator.desc .arrow-down { color: #8ac0ff; }
 
-        /* 高亮樣式 */
         .highlight-row, .highlight-row td { background-color: #fff9c4 !important; font-weight: bold; }
-
         td a { color: #007bff; text-decoration: none; font-weight: 500; }
+
         #back-to-top { display: none; position: fixed; bottom: 20px; right: 20px; width: 45px; height: 45px; background: rgba(0,123,255,0.8); color: #fff; border-radius: 50%; text-align: center; line-height: 45px; text-decoration: none; }
     </style>
 </head>
@@ -116,7 +92,7 @@
 
                 supabase: null,
                 currentData: [],
-                sortDir: 1, // 1: ASC, -1: DESC
+                sortDir: 1, 
                 CAMPUS_MAP: { '1': '中央校區', '2': '介仁校區', '3': '建國校區' },
                 BUILDING_MAP: { 'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟', 'G': 'G 棟', 'H': 'H 棟', '01': '行政大樓' },
                 COLS: ['SpaceNo', 'SpaceName', 'CampusNo', 'BuildingNo', 'FloorNo', 'PicNo'],
@@ -146,7 +122,6 @@
                     this.buildingFilter.onchange = () => this.fetchData(this.searchInput.value);
                     this.searchInput.onkeyup = (e) => e.key === 'Enter' && this.fetchData(this.searchInput.value);
 
-                    // 點擊表頭排序 (包含主表與浮動表)
                     document.getElementById("table-head-row").onclick = (e) => this.handleSortClick(e);
                     document.getElementById("floating-header-row").onclick = (e) => this.handleSortClick(e);
 
@@ -159,12 +134,12 @@
                     const camp = this.campusFilter.value;
                     const bld = this.buildingFilter.value;
 
-                    // 同步 URL
+                    // 關鍵：將狀態更新到網址，這樣按返回才找得到
                     const url = new URL(window.location);
-                    kw ? url.searchParams.set('keyword', kw) : url.searchParams.delete('keyword');
-                    camp ? url.searchParams.set('campus', camp) : url.searchParams.delete('campus');
-                    bld ? url.searchParams.set('building', bld) : url.searchParams.delete('building');
-                    hID ? url.searchParams.set('highlightID', hID) : url.searchParams.delete('highlightID');
+                    if(kw) url.searchParams.set('keyword', kw); else url.searchParams.delete('keyword');
+                    if(camp) url.searchParams.set('campus', camp); else url.searchParams.delete('campus');
+                    if(bld) url.searchParams.set('building', bld); else url.searchParams.delete('building');
+                    if(hID) url.searchParams.set('highlightID', hID);
                     window.history.replaceState({}, '', url);
 
                     let q = this.supabase.from("TblSpace").select('*');
@@ -177,22 +152,23 @@
 
                     this.currentData = data || [];
                     this.statusEl.textContent = `狀態: 找到 ${this.currentData.length} 筆資料`;
-                    this.sortAndRender(hID || url.searchParams.get('highlightID'));
+                    
+                    // 如果網址有 highlightID，優先使用網址的
+                    const finalHID = hID || url.searchParams.get('highlightID');
+                    this.sortAndRender(finalHID);
                 },
 
                 handleSortClick(e) {
                     const th = e.target.closest('th');
                     if (th && th.dataset.col === 'SpaceNo') {
-                        this.sortDir *= -1; // 切換 1 或 -1
+                        this.sortDir *= -1;
                         this.sortAndRender(new URLSearchParams(window.location.search).get('highlightID'));
                     }
                 },
 
                 sortAndRender(hID) {
-                    // 1. 空間編號排序
                     this.currentData.sort((a, b) => a.SpaceNo.localeCompare(b.SpaceNo, undefined, {numeric:true}) * this.sortDir);
 
-                    // 2. 高亮置頂
                     if (hID) {
                         const idx = this.currentData.findIndex(i => String(i.sID) === String(hID));
                         if (idx > -1) {
@@ -204,7 +180,6 @@
                 },
 
                 render(hID) {
-                    // 生成表頭 (包含箭頭)
                     const hHTML = this.COLS.map(c => {
                         let indicator = '';
                         if (c === 'SpaceNo') {
@@ -217,7 +192,11 @@
                     document.getElementById("table-head-row").innerHTML = hHTML;
                     document.getElementById("floating-header-row").innerHTML = hHTML;
 
-                    // 生成內容
+                    // 取得目前搜尋參數，包進超連結
+                    const kw = this.searchInput.value;
+                    const cp = this.campusFilter.value;
+                    const bd = this.buildingFilter.value;
+
                     this.tbody.innerHTML = this.currentData.map(row => {
                         const isH = (hID && String(row.sID) === String(hID)) ? 'class="highlight-row"' : '';
                         return `<tr ${isH}>${this.COLS.map(c => {
@@ -225,7 +204,12 @@
                             if (c === 'CampusNo') v = this.CAMPUS_MAP[v] || v;
                             if (c === 'BuildingNo') v = this.BUILDING_MAP[v] || v;
                             if (c === 'FloorNo' && v) v = `${v} 樓`;
-                            if (c === 'SpaceName' && row.PicNo) return `<td><a href="Details.html?sID=${row.sID}">${v}</a></td>`;
+                            
+                            // 修改：連結帶入所有目前狀態
+                            if (c === 'SpaceName' && row.PicNo) {
+                                const link = `Details.html?sID=${row.sID}&highlightID=${row.sID}&keyword=${encodeURIComponent(kw)}&campus=${cp}&building=${bd}`;
+                                return `<td><a href="${link}">${v}</a></td>`;
+                            }
                             return `<td>${v}</td>`;
                         }).join('')}</tr>`;
                     }).join('');
@@ -247,7 +231,6 @@
                 syncHeaderPos() {
                     const rect = document.getElementById("space-table").getBoundingClientRect();
                     const containerRect = this.tableContainer.getBoundingClientRect();
-                    
                     if (rect.top < 0 && rect.bottom > 100) {
                         this.floatingHeaderContainer.style.display = "block";
                         this.floatingHeaderContainer.style.left = `${containerRect.left}px`;
