@@ -60,26 +60,74 @@
         .detail-value {
             flex-grow: 1;
         }
-        #space-image {
-            width: 100%;
-            max-width: 600px;
-            height: auto;
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-        }
+        
+        /* ------------------------------------------- */
+        /* 圖片縮放和全屏相關的 CSS */
+        /* ------------------------------------------- */
+
         #image-container {
             position: relative;
             text-align: center;
             margin-bottom: 20px;
+            cursor: zoom-in; /* 預設為可放大 */
         }
+        
+        #image-zoom-wrapper {
+            position: relative;
+            display: inline-block;
+            max-width: 600px; /* 正常顯示時的最大寬度 */
+            width: 100%;
+            overflow: hidden;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        #space-image {
+            width: 100%;
+            height: auto;
+            border: 1px solid #ddd; /* 正常狀態的 1px 邊框 */
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+            transform-origin: center center;
+        }
+        
+        /* 全屏時的遮罩層 */
+        .fullscreen-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: zoom-out;
+            overflow: hidden; 
+        }
+
+        /* 全屏時圖片的樣式 */
+        .zoomed-image {
+            position: relative; 
+            width: auto;
+            height: auto;
+            max-width: 90vw;
+            max-height: 90vh;
+            
+            object-fit: contain; /* 確保等比例縮放 */
+
+            border: none; /* 這裡設定了移除邊框，JS 會再次確保 */
+            border-radius: 0;
+            cursor: zoom-out; 
+            transition: none !important; 
+        }
+
         #error-message {
             color: #b00020;
             font-weight: bold;
         }
+        
         #highlight-box {
             position: absolute;
             border: 4px solid red;
@@ -127,12 +175,14 @@
             </div>
             
             <div id="image-container">
-                <div id="highlight-box"></div> 
+                <div id="image-zoom-wrapper">
+                    <div id="highlight-box"></div> 
+                </div>
             </div>
         </div>
     </div>
     
-    <script src="./config.js"></script>
+    <script src="./config.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
     <script>
@@ -140,9 +190,7 @@
         // 資料對應表
         // ---------------------------------------------------
         const CAMPUS_MAP = {
-            '1': '中央校區(校本部)',
-            '2': '介仁校區(人社院)',
-            '3': '建國校區(慈科大)'
+            '1': '中央校區(校本部)', '2': '介仁校區(人社院)', '3': '建國校區(慈科大)'
         };
 
         const BUILDING_MAP = {
@@ -154,16 +202,77 @@
             '01': '行政大樓',
         };
 
-        // ---------------------------------------------------
-        // 取得 URL 參數的輔助函式
-        // ---------------------------------------------------
         function getQueryParam(name) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(name);
         }
+        
+        // ---------------------------------------------------
+        // 圖片縮放/全屏功能邏輯 (兩段式切換)
+        // ---------------------------------------------------
+        
+        // 退出全屏的共用函式
+        function exitFullscreen(imgElement, overlay, wrapper) {
+            imgElement.style.transform = '';
+            imgElement.classList.remove('zoomed-image');
+            
+            // 退出時，恢復圖片的邊框和游標樣式
+            imgElement.style.border = '1px solid #ddd'; 
+            imgElement.style.cursor = 'zoom-in'; 
+
+            wrapper.appendChild(imgElement); // 將圖片移回原來的 wrapper
+            overlay.style.display = 'none';
+            overlay.remove();
+        }
+
+        function enableImageZoom(imgElement) {
+            const wrapper = document.getElementById('image-zoom-wrapper');
+            let scaleState = 0; // 0: 原始大小, 1: 全屏
+
+            const overlay = document.createElement('div');
+            overlay.className = 'fullscreen-overlay';
+            overlay.style.display = 'none';
+
+            // 點擊圖片事件處理
+            imgElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                if (scaleState === 0) {
+                    // 狀態 0 -> 狀態 1 (進入全屏, 等比例縮放至最大視窗)
+                    
+                    document.body.appendChild(overlay);
+                    overlay.innerHTML = ''; 
+                    overlay.appendChild(imgElement); 
+                    overlay.style.display = 'flex';
+                    
+                    imgElement.classList.add('zoomed-image');
+                    imgElement.style.transform = ''; 
+                    
+                    // 進入時，移除圖片的邊框並設定游標
+                    imgElement.style.border = 'none'; 
+                    imgElement.style.cursor = 'zoom-out'; 
+                    
+                    scaleState = 1;
+
+                } else if (scaleState === 1) {
+                    // 狀態 1 -> 狀態 0 (退出全屏，回到原始大小)
+                    exitFullscreen(imgElement, overlay, wrapper);
+                    scaleState = 0;
+                }
+            });
+
+            // 點擊遮罩層時，退出全屏
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay && scaleState === 1) { 
+                    exitFullscreen(imgElement, overlay, wrapper);
+                    scaleState = 0;
+                }
+            });
+        }
+
 
         // ---------------------------------------------------
-        // 渲染詳細資料到介面 (包含圖片載入邏輯)
+        // 渲染詳細資料到介面
         // ---------------------------------------------------
         function renderDetails(data) {
             const spaceName = String(data.SpaceName ?? "").trim();
@@ -172,7 +281,6 @@
             document.getElementById("detail-title").textContent = `${spaceName} - 詳細資料`;
             document.getElementById("space-name").textContent = spaceName;
 
-            // 處理地點相關資訊
             document.getElementById("campus-name").textContent = CAMPUS_MAP[String(data.CampusNo ?? "").trim()] || data.CampusNo;
             document.getElementById("space-no").textContent = spaceNo;
             document.getElementById("building-no").textContent = BUILDING_MAP[String(data.BuildingNo ?? "").trim()] || data.BuildingNo;
@@ -180,30 +288,26 @@
             const floorValue = String(data.FloorNo ?? "").trim();
             document.getElementById("floor-no").textContent = (floorValue !== "" && !isNaN(Number(floorValue))) ? `${floorValue} 樓` : floorValue;
             
-            
-            // 🚀 關鍵修改區塊：設置返回連結的 href
+            // 設置返回連結 (傳遞 sID 和 keyword)
             const backLink = document.getElementById("back-button");
-            const keyword = getQueryParam('keyword'); // 取得 index 傳來的關鍵字
-            const sID = getQueryParam('sID');       // 取得當前的 sID (唯一識別碼)
+            const keyword = getQueryParam('keyword');
+            const sID = getQueryParam('sID');
             
             let returnUrl = 'index.html';
             
             if (keyword || sID) {
                 returnUrl += `?keyword=${encodeURIComponent(keyword || '')}`; 
-                // 🚀 將 sID 作為 highlightID 參數傳回，用於精確置頂
                 returnUrl += `&highlightID=${encodeURIComponent(sID)}`; 
             }
-            
             backLink.href = returnUrl;
-            // 結束 關鍵修改區塊
             
-            // ---------------------------------------------------
-            // 處理圖片顯示 (與先前邏輯相同)
-            // ---------------------------------------------------
+            // 處理圖片顯示
             const picNo = String(data.PicNo ?? "").trim();
-            const imgContainer = document.getElementById("image-container");
+            const imgWrapper = document.getElementById("image-zoom-wrapper");
             const highlightBox = document.getElementById("highlight-box");
 
+            imgWrapper.innerHTML = '';
+            imgWrapper.appendChild(highlightBox);
             highlightBox.style.display = 'none';
 
             if (picNo !== "") {
@@ -211,9 +315,8 @@
                 const jpgPath = `TCUMAP/${picNo}.jpg`;
                 
                 const loadAndRenderImage = (imageElement) => {
-                    imgContainer.innerHTML = '';
-                    imgContainer.appendChild(imageElement);
-                    imgContainer.appendChild(highlightBox); 
+                    imgWrapper.appendChild(imageElement);
+                    enableImageZoom(imageElement); 
                 };
 
                 const imgPng = new Image();
@@ -232,21 +335,20 @@
                     imgJpg.onload = () => loadAndRenderImage(imgJpg);
                     
                     imgJpg.onerror = () => {
-                        imgContainer.innerHTML = `<p>找不到與圖片編號 <strong>${picNo}</strong> 相關的平面圖。</p>`;
+                        document.getElementById("image-container").innerHTML = `<p>找不到與圖片編號 <strong>${picNo}</strong> 相關的平面圖。</p>`;
                     };
                 };
 
             } else {
-                imgContainer.innerHTML = `<p>此空間沒有圖片編號資料，無法顯示平面圖。</p>`;
+                document.getElementById("image-container").innerHTML = `<p>此空間沒有圖片編號資料，無法顯示平面圖。</p>`;
             }
         }
         
         // ---------------------------------------------------
-        // 載入單一空間詳細資料
+        // 載入單一空間詳細資料 (使用 sID 查詢)
         // ---------------------------------------------------
         async function loadSpaceDetails() {
             const errorMessageEl = document.getElementById("error-message");
-            // 🚀 關鍵：從 URL 取得 sID，用於唯一查詢
             const sID = getQueryParam('sID'); 
 
             if (!sID) {
@@ -263,7 +365,6 @@
             const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
             errorMessageEl.textContent = "正在查詢資料庫...";
 
-            // 🚀 關鍵：使用 sID 進行唯一查詢
             const { data: results, error } = await supabaseClient
                 .from("TblSpace")
                 .select("*")
@@ -282,7 +383,6 @@
             renderDetails(data);
         }
 
-        // 頁面載入時執行
         window.onload = loadSpaceDetails;
 
     </script>
