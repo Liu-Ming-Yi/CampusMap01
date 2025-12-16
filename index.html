@@ -2,75 +2,92 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>Supabase 測試：TblSpace 查詢</title>
+    <title>Supabase 空間查詢系統</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         /* 基礎樣式 */
-        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; }
+        body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; }
         .main-content-wrapper { max-width: 100%; padding: 0 20px; margin: 20px auto; }
-        h1 { font-size: 1.5rem; margin-bottom: 10px; padding: 5px 0; }
-        #status { margin: 10px 0; color: #555; }
-        #error { color: #b00020; margin: 10px 0; white-space: pre-wrap; }
+        h1 { font-size: 1.5rem; margin-bottom: 10px; }
+        #status { margin: 10px 0; color: #555; font-size: 0.9rem; }
+        #error { color: #b00020; margin: 10px 0; }
 
-        /* 搜尋欄位樣式 */
+        /* 搜尋列 */
         .search-bar { margin: 10px 0 20px 0; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .search-bar label { width: 100%; font-weight: 600; }
-        .search-bar label[for="campus-filter"], .search-bar label[for="building-filter"] { width: auto; font-weight: 500; margin-left: 10px; }
-        .search-bar input, .search-bar select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; flex-grow: 1; min-width: 200px; box-sizing: border-box; background-color: #fff; }
-        .search-bar select { flex-grow: 0; min-width: 120px; cursor: pointer; }
-        .search-bar button { padding: 8px 15px; border-radius: 4px; border: none; background-color: #007bff; color: #fff; cursor: pointer; white-space: nowrap; transition: background-color 0.2s; }
+        .search-bar label { font-weight: 600; width: 100%; }
+        .search-bar select, .search-bar input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: #fff; }
+        .search-bar input { flex-grow: 1; min-width: 200px; }
+        .search-bar button { padding: 8px 15px; border-radius: 4px; border: none; background-color: #007bff; color: #fff; cursor: pointer; }
         .search-bar button:hover { background-color: #0056b3; }
 
-        /* 浮動表頭樣式 */
-        .floating-header-container { position: fixed; top: 0; left: 0; right: 0; z-index: 100; overflow: hidden; background-color: #555; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3); display: none; }
-        .floating-header { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; background: transparent; }
+        /* 浮動表頭容器 */
+        .floating-header-container {
+            position: fixed;
+            top: 0;
+            z-index: 100;
+            overflow: hidden;
+            background-color: #555;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            display: none;
+        }
 
-        /* 表格樣式 */
-        .table-container { width: 100%; margin-top: 20px; border: none; overflow-x: auto; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
+        /* 表格結構 */
+        .table-container { width: 100%; margin-top: 20px; overflow-x: auto; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
         table { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; }
-        th, td { padding: 10px; border: none; font-size: 0.9rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
+        th, td { padding: 12px 10px; font-size: 0.9rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
         /* 欄位寬度 */
-        th[data-col="SpaceName"], td[data-col="SpaceName"] { max-width: 250px; width: 250px; }
-        th[data-col="CampusNo"], td[data-col="CampusNo"] { max-width: 150px; width: 150px; }
-        th[data-col="SpaceNo"], td[data-col="SpaceNo"] { max-width: 120px; width: 120px; }
+        th[data-col="SpaceName"], td[data-col="SpaceName"] { width: 250px; }
+        th[data-col="CampusNo"], td[data-col="CampusNo"] { width: 150px; }
+        th[data-col="SpaceNo"], td[data-col="SpaceNo"] { width: 130px; cursor: pointer; position: relative; }
 
-        #space-table > tbody > tr > td { border-bottom: 1px solid #eee; }
-        #space-table > thead > tr > th, .floating-header th { background: #555; color: #fff !important; user-select: none; }
+        thead tr, .floating-header-container tr { background: #555; color: #fff; }
+        tbody tr { border-bottom: 1px solid #eee; }
 
-        /* --- 核心修改：強化高亮背景權重 --- */
-        .highlight-row { background-color: #fff9c4 !important; font-weight: bold; }
-        .highlight-row td { background-color: #fff9c4 !important; } /* 確保單元格背景也被覆蓋 */
+        /* 排序指示器樣式 */
+        .sort-indicator {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            margin-left: 6px;
+            line-height: 0.7;
+        }
+        .sort-arrow { color: rgba(255, 255, 255, 0.3); font-size: 0.9rem; }
+        /* 點擊後的高亮顏色 */
+        .sort-indicator.asc .arrow-up { color: #8ac0ff; }
+        .sort-indicator.desc .arrow-down { color: #8ac0ff; }
+
+        /* 高亮樣式 */
+        .highlight-row, .highlight-row td { background-color: #fff9c4 !important; font-weight: bold; }
 
         td a { color: #007bff; text-decoration: none; font-weight: 500; }
-        #back-to-top { display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1000; width: 45px; height: 45px; line-height: 45px; text-align: center; background-color: rgba(0, 123, 255, 0.8); color: white; border-radius: 50%; text-decoration: none; }
+        #back-to-top { display: none; position: fixed; bottom: 20px; right: 20px; width: 45px; height: 45px; background: rgba(0,123,255,0.8); color: #fff; border-radius: 50%; text-align: center; line-height: 45px; text-decoration: none; }
     </style>
 </head>
 <body>
 
     <div class="floating-header-container" id="floating-header-container">
-        <table class="floating-header" id="floating-header-table">
+        <table id="floating-header-table">
             <thead><tr id="floating-header-row"></tr></thead>
         </table>
     </div>
 
     <div class="main-content-wrapper">
-        <h1>Supabase 測試：TblSpace 查詢</h1>
-        <div id="status">狀態：準備中...</div>
+        <h1>空間資訊查詢系統</h1>
+        <div id="status">狀態：載入中...</div>
         <div id="error"></div>
 
         <div class="search-bar">
-            <label for="search-input">請輸入空間名稱、編號或圖片編號：</label>
-            <input type="text" id="search-input" placeholder="例如：會議室, A102" />
+            <label>快速搜尋：</label>
+            <input type="text" id="search-input" placeholder="輸入名稱、編號..." />
             <button id="search-btn">搜尋</button>
-            <label for="campus-filter">校區篩選：</label>
-            <select id="campus-filter"><option value="">-- 所有校區 --</option></select>
-            <label for="building-filter">樓棟篩選：</label>
-            <select id="building-filter"><option value="">-- 所有樓棟 --</option></select>
+            <select id="campus-filter"></select>
+            <select id="building-filter"></select>
             <button id="reset-btn" style="display:none;">重設</button>
         </div>
 
-        <div class="table-container" id="table-container" style="display:none;">
+        <div class="table-container" id="table-container">
             <table id="space-table">
                 <thead><tr id="table-head-row"></tr></thead>
                 <tbody id="space-tbody"></tbody>
@@ -78,188 +95,183 @@
         </div>
     </div>
 
-    <a id="back-to-top" href="#" title="回到頂端">🔝</a>
+    <a id="back-to-top" href="#">🔝</a>
 
     <script src="./config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const campusMapApp = {
+            const app = {
                 statusEl: document.getElementById("status"),
                 errorEl: document.getElementById("error"),
                 searchInput: document.getElementById("search-input"),
                 searchBtn: document.getElementById("search-btn"),
                 resetBtn: document.getElementById("reset-btn"),
-                tableContainerEl: document.getElementById("table-container"),
-                theadRow: document.getElementById("table-head-row"),
+                tableContainer: document.getElementById("table-container"),
                 tbody: document.getElementById("space-tbody"),
-                spaceTableEl: document.getElementById("space-table"),
-                floatingHeaderContainerEl: document.getElementById("floating-header-container"),
-                floatingHeaderRow: document.getElementById("floating-header-row"),
-                campusFilterEl: document.getElementById("campus-filter"),
-                buildingFilterEl: document.getElementById("building-filter"),
-                backToTopBtn: document.getElementById("back-to-top"),
+                floatingHeaderContainer: document.getElementById("floating-header-container"),
+                floatingHeaderTable: document.getElementById("floating-header-table"),
+                campusFilter: document.getElementById("campus-filter"),
+                buildingFilter: document.getElementById("building-filter"),
 
-                supabaseClient: null,
+                supabase: null,
                 currentData: [],
-                sortConfig: { key: 'SpaceNo', direction: 1 },
-                COLUMN_DISPLAY_NAMES: { 'SpaceNo': '空間編號', 'SpaceName': '空間名稱', 'CampusNo': '校區名稱', 'BuildingNo': '所屬樓棟', 'FloorNo': '所在樓層', 'PicNo': '圖片編號' },
-                CAMPUS_MAP: { '1': '中央校區(校本部)', '2': '介仁校區(人社院)', '3': '建國校區(慈科大)' },
-                BUILDING_MAP: { 'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟', 'G': 'G 棟', 'H': 'H 棟', 'I': 'I 棟', 'J': 'J 棟', 'K': 'K 棟', 'L': 'L 棟', 'M': 'M 棟', 'N': 'N 棟', 'O': 'O 棟', 'P': 'P 棟', 'Q': 'Q 棟', 'R': 'R 棟', 'S': 'S 棟', 'T': 'T 棟', 'U': 'U 棟', 'V': 'V 棟', 'W': 'W 棟', 'X': 'X 棟', 'Y': 'Y 棟', 'Z': 'Z 棟', '01': '行政大樓' },
+                sortDir: 1, // 1: ASC, -1: DESC
+                CAMPUS_MAP: { '1': '中央校區', '2': '介仁校區', '3': '建國校區' },
+                BUILDING_MAP: { 'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟', 'G': 'G 棟', 'H': 'H 棟', '01': '行政大樓' },
+                COLS: ['SpaceNo', 'SpaceName', 'CampusNo', 'BuildingNo', 'FloorNo', 'PicNo'],
+                COL_NAMES: { 'SpaceNo': '空間編號', 'SpaceName': '空間名稱', 'CampusNo': '校區', 'BuildingNo': '樓棟', 'FloorNo': '樓層', 'PicNo': '圖片編號' },
 
                 init() {
-                    if (typeof SUPABASE_URL === "undefined") return;
-                    this.supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    this.populateFilters();
-                    this.addEventListeners();
+                    this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    this.renderFilters();
+                    this.bindEvents();
                     this.loadFromURL();
                 },
 
-                addEventListeners() {
-                    this.searchBtn.addEventListener("click", () => this.loadSpaces(this.searchInput.value));
-                    this.resetBtn.addEventListener("click", () => {
-                        window.location.href = window.location.pathname;
-                    });
-                    this.campusFilterEl.addEventListener("change", () => this.loadSpaces(this.searchInput.value));
-                    this.buildingFilterEl.addEventListener("change", () => this.loadSpaces(this.searchInput.value));
-                    
-                    const sortHandler = (e) => {
-                        const th = e.target.closest('th');
-                        if (th && th.dataset.col === 'SpaceNo') {
-                            const params = new URLSearchParams(window.location.search);
-                            this.handleSort(th.dataset.col, params.get('highlightID'));
-                        }
-                    };
-                    this.theadRow.addEventListener('click', sortHandler);
-                    this.floatingHeaderRow.addEventListener('click', sortHandler);
-                    window.addEventListener('scroll', () => { this.handleFloatingHeader(); this.handleScroll(); });
-                    this.backToTopBtn.addEventListener("click", (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+                renderFilters() {
+                    let cOpt = '<option value="">-- 校區 --</option>';
+                    Object.entries(this.CAMPUS_MAP).forEach(([k, v]) => cOpt += `<option value="${k}">${v}</option>`);
+                    this.campusFilter.innerHTML = cOpt;
+
+                    let bOpt = '<option value="">-- 樓棟 --</option>';
+                    Object.entries(this.BUILDING_MAP).forEach(([k, v]) => bOpt += `<option value="${k}">${v}</option>`);
+                    this.buildingFilter.innerHTML = bOpt;
                 },
 
-                handleScroll() { this.backToTopBtn.style.display = window.scrollY > 300 ? 'block' : 'none'; },
+                bindEvents() {
+                    this.searchBtn.onclick = () => this.fetchData(this.searchInput.value);
+                    this.resetBtn.onclick = () => window.location.href = window.location.pathname;
+                    this.campusFilter.onchange = () => this.fetchData(this.searchInput.value);
+                    this.buildingFilter.onchange = () => this.fetchData(this.searchInput.value);
+                    this.searchInput.onkeyup = (e) => e.key === 'Enter' && this.fetchData(this.searchInput.value);
 
-                populateFilters() {
-                    let campusOptions = '<option value="">-- 所有校區 --</option>';
-                    Object.entries(this.CAMPUS_MAP).forEach(([k, v]) => campusOptions += `<option value="${k}">${v}</option>`);
-                    this.campusFilterEl.innerHTML = campusOptions;
+                    // 點擊表頭排序 (包含主表與浮動表)
+                    document.getElementById("table-head-row").onclick = (e) => this.handleSortClick(e);
+                    document.getElementById("floating-header-row").onclick = (e) => this.handleSortClick(e);
 
-                    let buildingOptions = '<option value="">-- 所有樓棟 --</option>';
-                    Object.entries(this.BUILDING_MAP).forEach(([k, v]) => buildingOptions += `<option value="${k}">${v}</option>`);
-                    this.buildingFilterEl.innerHTML = buildingOptions;
+                    window.onscroll = () => this.syncHeaderPos();
+                    this.tableContainer.onscroll = () => this.syncHeaderScroll();
                 },
 
-                async loadSpaces(keyword = "", limitCount = 0, highlightID = null) {
-                    this.statusEl.textContent = "狀態: 資料讀取中...";
-                    const selectedCampus = this.campusFilterEl.value;
-                    const selectedBuilding = this.buildingFilterEl.value;
-                    const cleanKeyword = keyword.trim();
+                async fetchData(kw = "", hID = null) {
+                    this.statusEl.textContent = "狀態: 檢索中...";
+                    const camp = this.campusFilter.value;
+                    const bld = this.buildingFilter.value;
 
-                    // 更新網址參數
+                    // 同步 URL
                     const url = new URL(window.location);
-                    if (cleanKeyword) url.searchParams.set('keyword', cleanKeyword); else url.searchParams.delete('keyword');
-                    if (selectedCampus) url.searchParams.set('campus', selectedCampus); else url.searchParams.delete('campus');
-                    if (selectedBuilding) url.searchParams.set('building', selectedBuilding); else url.searchParams.delete('building');
-                    if (highlightID) url.searchParams.set('highlightID', highlightID);
+                    kw ? url.searchParams.set('keyword', kw) : url.searchParams.delete('keyword');
+                    camp ? url.searchParams.set('campus', camp) : url.searchParams.delete('campus');
+                    bld ? url.searchParams.set('building', bld) : url.searchParams.delete('building');
+                    hID ? url.searchParams.set('highlightID', hID) : url.searchParams.delete('highlightID');
                     window.history.replaceState({}, '', url);
 
-                    let query = this.supabaseClient.from("TblSpace").select('sID,SpaceNo,SpaceName,CampusNo,BuildingNo,FloorNo,PicNo');
+                    let q = this.supabase.from("TblSpace").select('*');
+                    if (kw) q = q.or(`SpaceName.ilike.%${kw}%,SpaceNo.ilike.%${kw}%`);
+                    if (camp) q = q.eq('CampusNo', camp);
+                    if (bld) q = q.or(`BuildingNo.eq.${bld},BuildingNo.eq.2${bld}`);
 
-                    if (cleanKeyword) query = query.or(`SpaceName.ilike.%${cleanKeyword}%,SpaceNo.ilike.%${cleanKeyword}%,PicNo.ilike.%${cleanKeyword}%`);
-                    if (selectedCampus) query = query.eq('CampusNo', selectedCampus);
-                    if (selectedBuilding) query = query.or(`BuildingNo.eq.${selectedBuilding},BuildingNo.eq.2${selectedBuilding}`);
+                    const { data, error } = await q.limit(1000);
+                    if (error) { this.errorEl.textContent = error.message; return; }
 
-                    query = query.limit(5000);
+                    this.currentData = data || [];
+                    this.statusEl.textContent = `狀態: 找到 ${this.currentData.length} 筆資料`;
+                    this.sortAndRender(hID || url.searchParams.get('highlightID'));
+                },
 
-                    try {
-                        const { data, error } = await query;
-                        if (error) throw error;
-                        this.currentData = data || [];
-                        this.statusEl.textContent = `狀態: 讀取成功，共 ${this.currentData.length} 筆`;
-                        // 載入完畢後執行排序與高亮置頂
-                        this.handleSort('SpaceNo', highlightID); 
-                    } catch (error) {
-                        this.statusEl.textContent = "狀態: 讀取失敗";
-                        this.errorEl.textContent = `錯誤: ${error.message}`;
+                handleSortClick(e) {
+                    const th = e.target.closest('th');
+                    if (th && th.dataset.col === 'SpaceNo') {
+                        this.sortDir *= -1; // 切換 1 或 -1
+                        this.sortAndRender(new URLSearchParams(window.location.search).get('highlightID'));
                     }
                 },
 
-                handleSort(key, highlightID = null) {
-                    if (key !== 'SpaceNo') return;
-                    
-                    // 1. 執行基礎排序
-                    this.currentData.sort((a, b) => {
-                        return a[key].localeCompare(b[key], undefined, {numeric: true, sensitivity: 'base'}) * this.sortConfig.direction;
-                    });
+                sortAndRender(hID) {
+                    // 1. 空間編號排序
+                    this.currentData.sort((a, b) => a.SpaceNo.localeCompare(b.SpaceNo, undefined, {numeric:true}) * this.sortDir);
 
-                    // 2. 核心修改：如果存在 highlightID，將該筆資料抽出來放到最前面
-                    if (highlightID) {
-                        const idx = this.currentData.findIndex(item => String(item.sID) === String(highlightID));
+                    // 2. 高亮置頂
+                    if (hID) {
+                        const idx = this.currentData.findIndex(i => String(i.sID) === String(hID));
                         if (idx > -1) {
-                            const highlightedItem = this.currentData.splice(idx, 1)[0];
-                            this.currentData.unshift(highlightedItem);
+                            const item = this.currentData.splice(idx, 1)[0];
+                            this.currentData.unshift(item);
                         }
                     }
-
-                    this.renderTable(this.currentData, highlightID);
+                    this.render(hID);
                 },
 
-                renderTable(data, highlightID = null) {
-                    this.theadRow.innerHTML = ""; this.tbody.innerHTML = "";
-                    if (!data || data.length === 0) { this.tableContainerEl.style.display = "none"; return; }
-                    this.tableContainerEl.style.display = "block";
+                render(hID) {
+                    // 生成表頭 (包含箭頭)
+                    const hHTML = this.COLS.map(c => {
+                        let indicator = '';
+                        if (c === 'SpaceNo') {
+                            const sortClass = this.sortDir === 1 ? 'asc' : 'desc';
+                            indicator = `<span class="sort-indicator ${sortClass}"><span class="sort-arrow arrow-up">▴</span><span class="sort-arrow arrow-down">▾</span></span>`;
+                        }
+                        return `<th data-col="${c}">${this.COL_NAMES[c]}${indicator}</th>`;
+                    }).join('');
 
-                    const cols = ['SpaceNo', 'SpaceName', 'CampusNo', 'BuildingNo', 'FloorNo', 'PicNo'];
-                    
-                    // Render Header
-                    const headerHTML = cols.map(col => `<th data-col="${col}">${this.COLUMN_DISPLAY_NAMES[col]}</th>`).join('');
-                    this.theadRow.innerHTML = headerHTML;
-                    this.floatingHeaderRow.innerHTML = headerHTML;
+                    document.getElementById("table-head-row").innerHTML = hHTML;
+                    document.getElementById("floating-header-row").innerHTML = hHTML;
 
-                    // Render Body
-                    this.tbody.innerHTML = data.map(row => {
-                        // 核心修改：確保 sID 比對時轉為字串
-                        const isHigh = (highlightID && String(row.sID) === String(highlightID)) ? 'class="highlight-row"' : '';
-                        return `<tr ${isHigh}>${cols.map(col => {
-                            let val = row[col] || "";
-                            if (col === 'CampusNo') val = this.CAMPUS_MAP[val] || val;
-                            if (col === 'BuildingNo') val = this.BUILDING_MAP[val] || val;
-                            if (col === 'FloorNo' && val) val = `${val} 樓`;
-                            if (col === 'SpaceName' && row.PicNo) {
-                                const href = `Details.html?sID=${row.sID}&keyword=${encodeURIComponent(this.searchInput.value)}&campus=${this.campusFilterEl.value}&building=${this.buildingFilterEl.value}`;
-                                return `<td><a href="${href}">${val}</a></td>`;
-                            }
-                            return `<td>${val}</td>`;
+                    // 生成內容
+                    this.tbody.innerHTML = this.currentData.map(row => {
+                        const isH = (hID && String(row.sID) === String(hID)) ? 'class="highlight-row"' : '';
+                        return `<tr ${isH}>${this.COLS.map(c => {
+                            let v = row[c] || "";
+                            if (c === 'CampusNo') v = this.CAMPUS_MAP[v] || v;
+                            if (c === 'BuildingNo') v = this.BUILDING_MAP[v] || v;
+                            if (c === 'FloorNo' && v) v = `${v} 樓`;
+                            if (c === 'SpaceName' && row.PicNo) return `<td><a href="Details.html?sID=${row.sID}">${v}</a></td>`;
+                            return `<td>${v}</td>`;
                         }).join('')}</tr>`;
                     }).join('');
 
-                    this.syncHeaderWidths();
                     this.resetBtn.style.display = 'inline-block';
+                    this.syncHeaderWidths();
                 },
 
                 syncHeaderWidths() {
-                    const ths = this.theadRow.children;
-                    const fths = this.floatingHeaderRow.children;
+                    const ths = document.getElementById("table-head-row").children;
+                    const fths = document.getElementById("floating-header-row").children;
+                    if (!ths.length) return;
                     for (let i = 0; i < ths.length; i++) {
-                        if (fths[i]) fths[i].style.width = window.getComputedStyle(ths[i]).width;
+                        fths[i].style.width = getComputedStyle(ths[i]).width;
+                        fths[i].style.minWidth = getComputedStyle(ths[i]).width;
                     }
-                    this.floatingHeaderContainerEl.style.width = `${this.tableContainerEl.offsetWidth}px`;
                 },
 
-                handleFloatingHeader() {
-                    const rect = this.spaceTableEl.getBoundingClientRect();
-                    this.floatingHeaderContainerEl.style.display = (rect.top < 0 && rect.bottom > 50) ? "block" : "none";
+                syncHeaderPos() {
+                    const rect = document.getElementById("space-table").getBoundingClientRect();
+                    const containerRect = this.tableContainer.getBoundingClientRect();
+                    
+                    if (rect.top < 0 && rect.bottom > 100) {
+                        this.floatingHeaderContainer.style.display = "block";
+                        this.floatingHeaderContainer.style.left = `${containerRect.left}px`;
+                        this.floatingHeaderContainer.style.width = `${containerRect.width}px`;
+                        this.syncHeaderScroll();
+                    } else {
+                        this.floatingHeaderContainer.style.display = "none";
+                    }
+                    document.getElementById("back-to-top").style.display = window.scrollY > 300 ? "block" : "none";
+                },
+
+                syncHeaderScroll() {
+                    this.floatingHeaderTable.style.marginLeft = `-${this.tableContainer.scrollLeft}px`;
                 },
 
                 loadFromURL() {
                     const p = new URLSearchParams(window.location.search);
-                    const hID = p.get('highlightID');
-                    if (p.get('campus')) this.campusFilterEl.value = p.get('campus');
-                    if (p.get('building')) this.buildingFilterEl.value = p.get('building');
                     this.searchInput.value = p.get('keyword') || "";
-                    this.loadSpaces(this.searchInput.value, 0, hID);
+                    this.campusFilter.value = p.get('campus') || "";
+                    this.buildingFilter.value = p.get('building') || "";
+                    this.fetchData(this.searchInput.value, p.get('highlightID'));
                 }
             };
-            campusMapApp.init();
+            app.init();
         });
     </script>
 </body>
