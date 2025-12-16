@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>Supabase 空間查詢系統</title>
+    <title>Supabase 空間查詢系統 (全欄位排序版)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; }
@@ -23,21 +23,24 @@
         table { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; }
         th, td { padding: 12px 10px; font-size: 0.9rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
+        /* 增加所有表頭的可點擊樣式 */
+        th { cursor: pointer; position: relative; transition: background 0.2s; }
+        th:hover { background-color: #666; }
+        
         th[data-col="SpaceName"], td[data-col="SpaceName"] { width: 250px; }
         th[data-col="CampusNo"], td[data-col="CampusNo"] { width: 150px; }
-        th[data-col="SpaceNo"], td[data-col="SpaceNo"] { width: 130px; cursor: pointer; }
+        th[data-col="SpaceNo"], td[data-col="SpaceNo"] { width: 130px; }
 
         thead tr, .floating-header-container tr { background: #555; color: #fff; }
         tbody tr { border-bottom: 1px solid #eee; }
 
         .sort-indicator { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin-left: 6px; line-height: 0.7; }
-        .sort-arrow { color: rgba(255, 255, 255, 0.3); font-size: 0.9rem; }
-        .sort-indicator.asc .arrow-up { color: #8ac0ff; }
-        .sort-indicator.desc .arrow-down { color: #8ac0ff; }
+        .sort-arrow { color: rgba(255, 255, 255, 0.2); font-size: 0.9rem; }
+        .sort-indicator.active-asc .arrow-up { color: #8ac0ff; }
+        .sort-indicator.active-desc .arrow-down { color: #8ac0ff; }
 
         .highlight-row, .highlight-row td { background-color: #fff9c4 !important; font-weight: bold; }
         td a { color: #007bff; text-decoration: none; font-weight: 500; }
-
         #back-to-top { display: none; position: fixed; bottom: 20px; right: 20px; width: 45px; height: 45px; background: rgba(0,123,255,0.8); color: #fff; border-radius: 50%; text-align: center; line-height: 45px; text-decoration: none; }
     </style>
 </head>
@@ -92,6 +95,7 @@
 
                 supabase: null,
                 currentData: [],
+                sortCol: 'SpaceNo', // 預設排序欄位
                 sortDir: 1, 
                 CAMPUS_MAP: { '1': '中央校區', '2': '介仁校區', '3': '建國校區' },
                 BUILDING_MAP: { 'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟', 'G': 'G 棟', 'H': 'H 棟', '01': '行政大樓' },
@@ -122,8 +126,22 @@
                     this.buildingFilter.onchange = () => this.fetchData(this.searchInput.value);
                     this.searchInput.onkeyup = (e) => e.key === 'Enter' && this.fetchData(this.searchInput.value);
 
-                    document.getElementById("table-head-row").onclick = (e) => this.handleSortClick(e);
-                    document.getElementById("floating-header-row").onclick = (e) => this.handleSortClick(e);
+                    // 點擊事件
+                    const handleHeaderClick = (e) => {
+                        const th = e.target.closest('th');
+                        if (th) {
+                            const col = th.dataset.col;
+                            if (this.sortCol === col) {
+                                this.sortDir *= -1;
+                            } else {
+                                this.sortCol = col;
+                                this.sortDir = 1;
+                            }
+                            this.sortAndRender(new URLSearchParams(window.location.search).get('highlightID'));
+                        }
+                    };
+                    document.getElementById("table-head-row").onclick = handleHeaderClick;
+                    document.getElementById("floating-header-row").onclick = handleHeaderClick;
 
                     window.onscroll = () => this.syncHeaderPos();
                     this.tableContainer.onscroll = () => this.syncHeaderScroll();
@@ -134,7 +152,6 @@
                     const camp = this.campusFilter.value;
                     const bld = this.buildingFilter.value;
 
-                    // 關鍵：將狀態更新到網址，這樣按返回才找得到
                     const url = new URL(window.location);
                     if(kw) url.searchParams.set('keyword', kw); else url.searchParams.delete('keyword');
                     if(camp) url.searchParams.set('campus', camp); else url.searchParams.delete('campus');
@@ -152,23 +169,23 @@
 
                     this.currentData = data || [];
                     this.statusEl.textContent = `狀態: 找到 ${this.currentData.length} 筆資料`;
-                    
-                    // 如果網址有 highlightID，優先使用網址的
-                    const finalHID = hID || url.searchParams.get('highlightID');
-                    this.sortAndRender(finalHID);
-                },
-
-                handleSortClick(e) {
-                    const th = e.target.closest('th');
-                    if (th && th.dataset.col === 'SpaceNo') {
-                        this.sortDir *= -1;
-                        this.sortAndRender(new URLSearchParams(window.location.search).get('highlightID'));
-                    }
+                    this.sortAndRender(hID || url.searchParams.get('highlightID'));
                 },
 
                 sortAndRender(hID) {
-                    this.currentData.sort((a, b) => a.SpaceNo.localeCompare(b.SpaceNo, undefined, {numeric:true}) * this.sortDir);
+                    // 全欄位通用排序邏輯
+                    this.currentData.sort((a, b) => {
+                        let valA = a[this.sortCol] || "";
+                        let valB = b[this.sortCol] || "";
+                        
+                        // 使用 localeCompare 處理 數字、中、英 混合排序
+                        return valA.toString().localeCompare(valB.toString(), undefined, {
+                            numeric: true,
+                            sensitivity: 'base'
+                        }) * this.sortDir;
+                    });
 
+                    // 置頂邏輯
                     if (hID) {
                         const idx = this.currentData.findIndex(i => String(i.sID) === String(hID));
                         if (idx > -1) {
@@ -180,19 +197,19 @@
                 },
 
                 render(hID) {
+                    // 生成帶有排序箭頭的表頭
                     const hHTML = this.COLS.map(c => {
-                        let indicator = '';
-                        if (c === 'SpaceNo') {
-                            const sortClass = this.sortDir === 1 ? 'asc' : 'desc';
-                            indicator = `<span class="sort-indicator ${sortClass}"><span class="sort-arrow arrow-up">▴</span><span class="sort-arrow arrow-down">▾</span></span>`;
+                        let activeClass = "";
+                        if (this.sortCol === c) {
+                            activeClass = this.sortDir === 1 ? 'active-asc' : 'active-desc';
                         }
+                        const indicator = `<span class="sort-indicator ${activeClass}"><span class="sort-arrow arrow-up">▴</span><span class="sort-arrow arrow-down">▾</span></span>`;
                         return `<th data-col="${c}">${this.COL_NAMES[c]}${indicator}</th>`;
                     }).join('');
 
                     document.getElementById("table-head-row").innerHTML = hHTML;
                     document.getElementById("floating-header-row").innerHTML = hHTML;
 
-                    // 取得目前搜尋參數，包進超連結
                     const kw = this.searchInput.value;
                     const cp = this.campusFilter.value;
                     const bd = this.buildingFilter.value;
@@ -204,8 +221,6 @@
                             if (c === 'CampusNo') v = this.CAMPUS_MAP[v] || v;
                             if (c === 'BuildingNo') v = this.BUILDING_MAP[v] || v;
                             if (c === 'FloorNo' && v) v = `${v} 樓`;
-                            
-                            // 修改：連結帶入所有目前狀態
                             if (c === 'SpaceName' && row.PicNo) {
                                 const link = `Details.html?sID=${row.sID}&highlightID=${row.sID}&keyword=${encodeURIComponent(kw)}&campus=${cp}&building=${bd}`;
                                 return `<td><a href="${link}">${v}</a></td>`;
