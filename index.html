@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8" />
-    <title>空間資訊查詢系統</title>
+    <title>校園尋路</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background-color: #f7f7f7; }
@@ -76,10 +76,9 @@
 
     <div class="main-content-wrapper">
         <div class="header-bar">
-            <h1>空間資訊查詢系統</h1>
+            <h1>校園尋路慈大空間查詢平台</h1>
             <div class="stats-group">
-                <div class="stat-tag"><span class="online-dot"></span>在線：<span id="online-count">1</span></div>
-                <div class="stat-tag">遊覽人數：<span id="visitor-count">...</span></div>
+                <div class="stat-tag"><span class="online-dot"></span>在線人數：<span id="online-count">1</span></div>
                 <div class="stat-tag">瀏覽次數：<span id="visit-total">...</span></div>
             </div>
         </div>
@@ -150,7 +149,7 @@
                         });
                 },
 
-                // 2. 統計數據 (優化版：先查後寫，避免 409 錯誤)
+                // 2. 統計數據 (優化版：只顯示總瀏覽次數)
                 async setupStats() {
                     try {
                         const ipRes = await fetch('https://api.ipify.org?format=json');
@@ -167,17 +166,15 @@
 
                         if (!existing) {
                             await this.supabase.from('daily_page_views').insert([{ ip_address: ip }]);
-                            console.log("今日首次訪問，紀錄已儲存。");
-                        } else {
-                            console.log("今日已紀錄過，跳過重複寫入。");
                         }
 
-                        // 抓取全表計算顯示數字
-                        const { data } = await this.supabase.from('daily_page_views').select('ip_address');
-                        if (data) {
-                            document.getElementById('visit-total').textContent = data.length;
-                            const uniqueIPs = new Set(data.map(item => item.ip_address));
-                            document.getElementById('visitor-count').textContent = uniqueIPs.size;
+                        // 抓取全表筆數來更新「瀏覽次數」
+                        const { count, error } = await this.supabase
+                            .from('daily_page_views')
+                            .select('*', { count: 'exact', head: true });
+                        
+                        if (!error) {
+                            document.getElementById('visit-total').textContent = count;
                         }
                     } catch (err) { console.error('Stats Error:', err); }
                 },
@@ -290,4 +287,3 @@
     </script>
 </body>
 </html>
-
