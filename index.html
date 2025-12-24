@@ -78,10 +78,22 @@
             text-overflow: ellipsis; white-space: nowrap;
         }
 
-        /* 科技感雙箭頭排序指示器 */
+        /* 第一欄（空間編號）右移設定 */
+        th:first-child, td:first-child {
+            padding-left: 60px; 
+        }
+
+        th { 
+            background: #f8fafc; color: #4a5568; font-weight: 600; text-transform: uppercase;
+            font-size: 0.75rem; letter-spacing: 0.05em; border-bottom: 2px solid #edf2f7;
+            cursor: pointer; position: relative; transition: background 0.2s;
+        }
+        th:hover { background: #f1f5f9; }
+
+        /* 雙箭頭排序指示器 */
         .sort-indicator { 
             display: inline-flex; flex-direction: column; 
-            vertical-align: 4.5px; /* 箭頭整體垂直位置：正值往上，負值往下 */
+            vertical-align: 3px; 
             margin-left: 6px; line-height: 0.6;
         }
         .sort-arrow { color: #cbd5e0; font-size: 0.7rem; transition: color 0.2s; }
@@ -101,7 +113,7 @@
         td a { color: var(--tech-blue); text-decoration: none; display: inline-block; width: 100%; }
         td a:hover { text-decoration: underline; }
 
-        /* 科技感返回頂部按鈕 */
+        /* 返回頂部 */
         #back-to-top {
             display: none; position: fixed; bottom: 30px; right: 30px; 
             width: 50px; height: 50px; 
@@ -133,10 +145,10 @@
 
     <div class="main-content-wrapper">
         <div class="header-bar">
-            <h1>TCU SPACE <span style="color:var(--tech-blue)">LOCATOR</span></h1>
+            <h1>校園尋路 <span style="color:var(--tech-blue)">慈大空間查詢平台</span></h1>
             <div style="display: flex; gap: 10px;">
-                <div class="stat-tag">ONLINE: <span id="online-count" style="color:var(--tech-blue)">1</span></div>
-                <div class="stat-tag">VIEWS: <span id="visit-total">...</span></div>
+                <div class="stat-tag">在線人數: <span id="online-count" style="color:var(--tech-blue)">1</span></div>
+                <div class="stat-tag">遊覽人數: <span id="visit-total">...</span></div>
             </div>
         </div>
 
@@ -187,19 +199,51 @@
                 async init() {
                     this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     this.setupStats();
+                    this.setupOnlinePresence(); // 啟動在線人數追蹤
                     this.renderFilters();
                     this.bindEvents();
                     this.loadFromURL();
                 },
 
+                // --- 新增：即時在線人數監控 ---
+                setupOnlinePresence() {
+                    const channel = this.supabase.channel('online-users', {
+                        config: { presence: { key: 'user-' + Math.random().toString(36).substr(2, 9) } }
+                    });
+
+                    channel
+                        .on('presence', { event: 'sync' }, () => {
+                            const state = channel.presenceState();
+                            // 計算當前頻道上的連線總數
+                            const count = Object.keys(state).length;
+                            document.getElementById('online-count').textContent = count;
+                        })
+                        .subscribe(async (status) => {
+                            if (status === 'SUBSCRIBED') {
+                                await channel.track({ online_at: new Date().toISOString() });
+                            }
+                        });
+                },
+
                 async setupStats() {
                     try {
                         const { ip } = await (await fetch('https://api.ipify.org?format=json')).json();
-                        const { data: exist } = await this.supabase.from('daily_page_views').select('id').eq('ip_address', ip).eq('view_date', new Date().toISOString().split('T')[0]).maybeSingle();
-                        if (!exist) await this.supabase.from('daily_page_views').insert([{ ip_address: ip, user_agent: navigator.userAgent }]);
+                        const today = new Date().toISOString().split('T')[0];
+                        
+                        // 紀錄今日訪問
+                        const { data: exist } = await this.supabase.from('daily_page_views')
+                            .select('id').eq('ip_address', ip).eq('view_date', today).maybeSingle();
+                        
+                        if (!exist) {
+                            await this.supabase.from('daily_page_views').insert([{ ip_address: ip, user_agent: navigator.userAgent }]);
+                        }
+
+                        // 獲取總累計訪問次數
                         const { count } = await this.supabase.from('daily_page_views').select('*', { count: 'exact', head: true });
                         document.getElementById('visit-total').textContent = count || 0;
-                    } catch (e) {}
+                    } catch (e) {
+                        console.error("Stats Error:", e);
+                    }
                 },
 
                 renderFilters() {
@@ -215,7 +259,11 @@
                     const search = () => this.fetchData(document.getElementById('search-input').value);
                     document.getElementById('search-btn').onclick = search;
                     document.getElementById('search-input').onkeypress = (e) => { if (e.key === 'Enter') search(); };
-                    document.getElementById('reset-btn').onclick = () => { this.highlightID = null; window.location.href = window.location.pathname; };
+                    document.getElementById('reset-btn').onclick = () => { 
+                        this.highlightID = null; 
+                        document.getElementById('search-input').value = "";
+                        window.location.href = window.location.pathname; 
+                    };
                     
                     const sortClick = (e) => {
                         const th = e.target.closest('th');
