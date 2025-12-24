@@ -3,180 +3,144 @@
 <head>
     <meta charset="UTF-8" />
     <title>空間詳細資料與平面圖</title>
+    <link rel="icon" href="TCUMAP/logo.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            margin: 20px;
-            padding: 0;
-            background-color: #f7f7f7;
-            color: #333;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        .header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
-            margin-top: 0;
-        }
-        h1 {
-            color: #007bff;
-            margin: 0;
-        }
-        #back-button {
-            padding: 8px 15px;
-            font-size: 1rem;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            text-decoration: none;
-            transition: background-color 0.2s;
-        }
-        #back-button:hover {
-            background-color: #0056b3;
-        }
-        .detail-item {
-            display: flex;
-            margin-bottom: 15px;
-            font-size: 1.1rem;
-        }
-        .detail-label {
-            font-weight: 600;
-            width: 120px;
-            color: #555;
-            flex-shrink: 0;
-        }
-        .detail-value {
-            flex-grow: 1;
-        }
-        
-        /* ------------------------------------------- */
-        /* 圖片縮放和全屏相關的 CSS */
-        /* ------------------------------------------- */
-
-        #image-container {
-            position: relative;
-            text-align: center;
-            margin-bottom: 20px;
-            cursor: zoom-in; /* 預設為可放大 */
-        }
-        
-        #image-zoom-wrapper {
-            position: relative;
-            display: inline-block;
-            max-width: 600px; /* 正常顯示時的最大寬度 */
-            width: 100%;
-            overflow: hidden;
-            transition: transform 0.3s ease-in-out;
-        }
-        
-        #space-image {
-            width: 100%;
-            height: auto;
-            border: 1px solid #ddd; /* 正常狀態的 1px 邊框 */
-            border-radius: 4px;
-            display: block;
-            margin: 0 auto;
-            transform-origin: center center;
-        }
-        
-        /* 全屏時的遮罩層 */
-        .fullscreen-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 999;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: zoom-out;
-            overflow: hidden; 
+        /* 核心變數同步 */
+        :root {
+            --tech-blue: #007bff;
+            --neon-glow: rgba(0, 123, 255, 0.5);
+            --glass-bg: rgba(255, 255, 255, 0.9);
+            --bg-color: #f0f2f5;
         }
 
-        /* 全屏時圖片的樣式 */
-        .zoomed-image {
-            position: relative; 
-            width: auto;
-            height: auto;
-            max-width: 90vw;
-            max-height: 90vh;
-            
-            object-fit: contain; /* 確保等比例縮放 */
-
-            border: none; /* 這裡設定了移除邊框，JS 會再次確保 */
-            border-radius: 0;
-            cursor: zoom-out; 
-            transition: none !important; 
+        body { 
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+            margin: 0; padding: 20px; 
+            background-color: var(--bg-color); 
+            color: #2c3e50; 
+            display: flex; justify-content: center;
         }
 
-        #error-message {
-            color: #b00020;
-            font-weight: bold;
+        .container { 
+            max-width: 900px; width: 100%; 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(15px);
+            padding: 30px; 
+            border-radius: 16px; 
+            border: 1px solid rgba(255,255,255,0.4);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+        }
+
+        /* 標題與返回按鈕 */
+        .header-container { 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 25px;
+        }
+        h1 { 
+            color: #1a202c; margin: 0; font-size: 1.6rem; 
+            letter-spacing: 1px; border-left: 5px solid var(--tech-blue); padding-left: 15px;
         }
         
-        #highlight-box {
-            position: absolute;
-            border: 4px solid red;
-            background-color: rgba(255, 0, 0, 0.3);
-            box-sizing: border-box;
-            display: none;
-            z-index: 10;
+        #back-button { 
+            padding: 10px 20px; font-size: 0.9rem; 
+            background: #1a202c; color: #00f2fe; 
+            border: 1px solid rgba(0, 242, 254, 0.3); border-radius: 8px; 
+            text-decoration: none; font-weight: 600;
+            transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;
         }
+        #back-button:hover { 
+            background: var(--tech-blue); color: white; 
+            box-shadow: 0 0 15px var(--neon-glow); transform: translateX(-5px);
+        }
+
+        /* 詳細資料列表 */
+        .info-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px; margin-bottom: 30px;
+        }
+
+        .detail-item { 
+            display: flex; flex-direction: column; gap: 5px;
+            background: rgba(255,255,255,0.5); padding: 15px; border-radius: 10px;
+            border: 1px solid #edf2f7; transition: 0.3s;
+        }
+        .detail-item:hover { border-color: var(--tech-blue); background: #fff; }
+
+        .detail-label { font-weight: 700; font-size: 0.8rem; color: #718096; text-transform: uppercase; }
+        .detail-value { font-size: 1.1rem; color: #2d3748; }
+
+        /* 圖片容器：霓虹發光效果 */
+        #image-container { 
+            text-align: center; margin-top: 30px; min-height: 300px; 
+            background-color: #1a202c; /* 深色底襯托平面圖 */
+            display: flex; align-items: center; justify-content: center; 
+            border-radius: 12px; position: relative; overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            border: 2px solid #2d3748;
+        }
+
+        /* 掃描線動畫效果 */
+        #image-container::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: rgba(0, 242, 254, 0.2);
+            animation: scan 3s linear infinite;
+        }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+        #image-zoom-wrapper { cursor: zoom-in; width: 100%; padding: 10px; box-sizing: border-box; }
+        
+        #space-image { 
+            max-width: 100%; height: auto; display: block; margin: 0 auto;
+            border-radius: 4px; transition: transform 0.3s;
+            filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.3));
+        }
+
+        #img-status { color: #718096; font-size: 0.9rem; }
+
+        /* 全螢幕燈箱 */
+        .fullscreen-overlay { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(10, 14, 23, 0.95); z-index: 999; 
+            display: flex; justify-content: center; align-items: center; cursor: zoom-out; 
+            backdrop-filter: blur(5px);
+        }
+        .zoomed-image { max-width: 95vw; max-height: 95vh; object-fit: contain; }
     </style>
 </head>
 <body>
     <div class="container">
-        
         <div class="header-container">
-            <h1 id="detail-title">空間詳細資料載入中...</h1>
-            <a id="back-button" href="index.html">🔙 返回列表</a> 
+            <h1 id="detail-title">LOADING...</h1>
+            <a id="back-button" href="index.html">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                BACK TO LIST
+            </a> 
         </div>
 
         <div id="details-content">
-            <p id="error-message"></p>
-            
-            <div class="detail-item">
-                <span class="detail-label">校區名稱：</span>
-                <span class="detail-value" id="campus-name"></span>
+            <div class="info-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Campus 校區</span>
+                    <span id="campus-name" class="detail-value">---</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Space ID 編號</span>
+                    <span id="space-no" class="detail-value">---</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Space Name 名稱</span>
+                    <span id="space-name" class="detail-value">---</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Location 樓棟/樓層</span>
+                    <span id="location-text" class="detail-value">---</span>
+                </div>
             </div>
-            
-            <div class="detail-item">
-                <span class="detail-label">空間編號：</span>
-                <span class="detail-value" id="space-no"></span>
-            </div>
-            
-            <div class="detail-item">
-                <span class="detail-label">空間名稱：</span>
-                <span class="detail-value" id="space-name"></span>
-            </div>
-            
-            <div class="detail-item">
-                <span class="detail-label">所屬樓棟：</span>
-                <span class="detail-value" id="building-no"></span>
-            </div>
-            
-            <div class="detail-item">
-                <span class="detail-label">所在樓層：</span>
-                <span class="detail-value" id="floor-no"></span>
-            </div>
-            
+
             <div id="image-container">
                 <div id="image-zoom-wrapper">
-                    <div id="highlight-box"></div> 
+                    <span id="img-status">Initializing Scanner...</span>
                 </div>
             </div>
         </div>
@@ -184,207 +148,88 @@
     
     <script src="./config.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-
     <script>
-        // ---------------------------------------------------
-        // 資料對應表
-        // ---------------------------------------------------
-        const CAMPUS_MAP = {
-            '1': '中央校區(校本部)', '2': '介仁校區(人社院)', '3': '建國校區(慈科大)'
+        const CAMPUS_MAP = { '1': '中央校區', '2': '介仁校區', '3': '建國校區' };
+        const BUILDING_NAMES_MAP = {
+            "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 L 棟" },
+            "2": { "A": "合心樓 2A 棟", "B": "文心樓 2B 棟", "C": "立心樓 2C 棟", "D": "知心樓 2D 棟", "E": "明心樓 2E 棟", "G": "體育館 2A 棟", "H": "活動中心 2A 棟" }
         };
 
-        const BUILDING_MAP = {
-            'A': 'A 棟', 'B': 'B 棟', 'C': 'C 棟', 'D': 'D 棟', 'E': 'E 棟', 'F': 'F 棟',
-            'G': 'G 棟', 'H': 'H 棟', 'I': 'I 棟', 'J': 'J 棟', 'K': 'K 棟', 'L': 'L 棟',
-            'M': 'M 棟', 'N': 'N 棟', 'O': 'O 棟', 'P': 'P 棟', 'Q': 'Q 棟', 'R': 'R 棟',
-            'S': 'S 棟', 'T': 'T 棟', 'U': 'U 棟', 'V': 'V 棟', 'W': 'W 棟', 'X': 'X 棟',
-            'Y': 'Y 棟', 'Z': 'Z 棟',
-            '01': '行政大樓',
-        };
+        function getParam(n) { return new URLSearchParams(window.location.search).get(n); }
 
-        function getQueryParam(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
+        function enableImageZoom(img) {
+            const o = document.createElement('div'); o.className = 'fullscreen-overlay';
+            img.onclick = () => {
+                document.body.appendChild(o);
+                const z = img.cloneNode(); z.className = 'zoomed-image';
+                o.innerHTML = ''; o.appendChild(z);
+            };
+            o.onclick = () => o.remove();
         }
-        
-        // ---------------------------------------------------
-        // 圖片縮放/全屏功能邏輯 (兩段式切換)
-        // ---------------------------------------------------
-        
-        // 退出全屏的共用函式
-        function exitFullscreen(imgElement, overlay, wrapper) {
-            imgElement.style.transform = '';
-            imgElement.classList.remove('zoomed-image');
+
+        function tryLoadImage(url) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve(url);
+                img.onerror = () => resolve(null);
+                img.src = url;
+            });
+        }
+
+        async function loadAndDisplayImage(picNo, spaceName) {
+            const wrap = document.getElementById("image-zoom-wrapper");
+            if (!picNo || picNo === "null") { wrap.innerHTML = "<span style='color:#718096'>NO MAP DATA</span>"; return; }
             
-            // 退出時，恢復圖片的邊框和游標樣式
-            imgElement.style.border = '1px solid #ddd'; 
-            imgElement.style.cursor = 'zoom-in'; 
+            const exts = ['png', 'jpg', 'jpeg'];
+            let valid = null;
+            
+            for (const ext of exts) {
+                valid = await tryLoadImage(`TCUMAP/${picNo}.${ext}`);
+                if (valid) break;
+            }
+            if (!valid && spaceName) {
+                for (const ext of exts) {
+                    valid = await tryLoadImage(`TCUMAP/${spaceName}.${ext}`);
+                    if (valid) break;
+                }
+            }
 
-            wrapper.appendChild(imgElement); // 將圖片移回原來的 wrapper
-            overlay.style.display = 'none';
-            overlay.remove();
+            if (valid) {
+                const img = new Image(); img.id = "space-image"; img.src = valid;
+                img.onload = () => { 
+                    wrap.innerHTML = ""; wrap.appendChild(img); 
+                    enableImageZoom(img); 
+                };
+            } else { wrap.innerHTML = "<span style='color:#e53e3e'>MAP NOT FOUND</span>"; }
         }
 
-        function enableImageZoom(imgElement) {
-            const wrapper = document.getElementById('image-zoom-wrapper');
-            let scaleState = 0; // 0: 原始大小, 1: 全屏
-
-            const overlay = document.createElement('div');
-            overlay.className = 'fullscreen-overlay';
-            overlay.style.display = 'none';
-
-            // 點擊圖片事件處理
-            imgElement.addEventListener('click', (e) => {
-                e.stopPropagation();
-
-                if (scaleState === 0) {
-                    // 狀態 0 -> 狀態 1 (進入全屏, 等比例縮放至最大視窗)
-                    
-                    document.body.appendChild(overlay);
-                    overlay.innerHTML = ''; 
-                    overlay.appendChild(imgElement); 
-                    overlay.style.display = 'flex';
-                    
-                    imgElement.classList.add('zoomed-image');
-                    imgElement.style.transform = ''; 
-                    
-                    // 進入時，移除圖片的邊框並設定游標
-                    imgElement.style.border = 'none'; 
-                    imgElement.style.cursor = 'zoom-out'; 
-                    
-                    scaleState = 1;
-
-                } else if (scaleState === 1) {
-                    // 狀態 1 -> 狀態 0 (退出全屏，回到原始大小)
-                    exitFullscreen(imgElement, overlay, wrapper);
-                    scaleState = 0;
-                }
-            });
-
-            // 點擊遮罩層時，退出全屏
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay && scaleState === 1) { 
-                    exitFullscreen(imgElement, overlay, wrapper);
-                    scaleState = 0;
-                }
-            });
-        }
-
-
-        // ---------------------------------------------------
-        // 渲染詳細資料到介面
-        // ---------------------------------------------------
         function renderDetails(data) {
-            const spaceName = String(data.SpaceName ?? "").trim();
-            const spaceNo = String(data.SpaceNo ?? "").trim();
-
-            document.getElementById("detail-title").textContent = `${spaceName} - 詳細資料`;
-            document.getElementById("space-name").textContent = spaceName;
-
-            document.getElementById("campus-name").textContent = CAMPUS_MAP[String(data.CampusNo ?? "").trim()] || data.CampusNo;
-            document.getElementById("space-no").textContent = spaceNo;
-            document.getElementById("building-no").textContent = BUILDING_MAP[String(data.BuildingNo ?? "").trim()] || data.BuildingNo;
-
-            const floorValue = String(data.FloorNo ?? "").trim();
-            document.getElementById("floor-no").textContent = (floorValue !== "" && !isNaN(Number(floorValue))) ? `${floorValue} 樓` : floorValue;
+            const kw = getParam('keyword') || "", sID = getParam('sID') || "";
+            document.getElementById("back-button").href = `index.html?keyword=${encodeURIComponent(kw)}&highlightID=${encodeURIComponent(sID)}`;
             
-            // 設置返回連結 (傳遞 sID 和 keyword)
-            const backLink = document.getElementById("back-button");
-            const keyword = getQueryParam('keyword');
-            const sID = getQueryParam('sID');
+            document.getElementById("detail-title").textContent = (data.SpaceName || "SPACE DETAIL").toUpperCase();
+            document.getElementById("space-name").textContent = data.SpaceName;
+            document.getElementById("campus-name").textContent = CAMPUS_MAP[data.CampusNo] || data.CampusNo;
+            document.getElementById("space-no").textContent = data.SpaceNo;
             
-            let returnUrl = 'index.html';
-            
-            if (keyword || sID) {
-                returnUrl += `?keyword=${encodeURIComponent(keyword || '')}`; 
-                returnUrl += `&highlightID=${encodeURIComponent(sID)}`; 
-            }
-            backLink.href = returnUrl;
-            
-            // 處理圖片顯示
-            const picNo = String(data.PicNo ?? "").trim();
-            const imgWrapper = document.getElementById("image-zoom-wrapper");
-            const highlightBox = document.getElementById("highlight-box");
+            const bMap = BUILDING_NAMES_MAP[data.CampusNo];
+            const bName = bMap ? (bMap[data.BuildingNo] || bMap[data.BuildingNo.replace(/^2/,'')] || `${data.BuildingNo} 棟`) : (data.BuildingNo ? `${data.BuildingNo} 棟` : "");
+            const fName = data.FloorNo ? `${data.FloorNo} 樓` : "";
+            document.getElementById("location-text").textContent = `${bName} / ${fName}`;
 
-            imgWrapper.innerHTML = '';
-            imgWrapper.appendChild(highlightBox);
-            highlightBox.style.display = 'none';
-
-            if (picNo !== "") {
-                const pngPath = `TCUMAP/${picNo}.png`;
-                const jpgPath = `TCUMAP/${picNo}.jpg`;
-                
-                const loadAndRenderImage = (imageElement) => {
-                    imgWrapper.appendChild(imageElement);
-                    enableImageZoom(imageElement); 
-                };
-
-                const imgPng = new Image();
-                imgPng.id = "space-image";
-                imgPng.alt = `${spaceName} 平面圖`;
-                imgPng.src = pngPath;
-
-                imgPng.onload = () => loadAndRenderImage(imgPng);
-
-                imgPng.onerror = () => {
-                    const imgJpg = new Image();
-                    imgJpg.id = "space-image";
-                    imgJpg.alt = `${spaceName} 平面圖`;
-                    imgJpg.src = jpgPath;
-                    
-                    imgJpg.onload = () => loadAndRenderImage(imgJpg);
-                    
-                    imgJpg.onerror = () => {
-                        document.getElementById("image-container").innerHTML = `<p>找不到與圖片編號 <strong>${picNo}</strong> 相關的平面圖。</p>`;
-                    };
-                };
-
-            } else {
-                document.getElementById("image-container").innerHTML = `<p>此空間沒有圖片編號資料，無法顯示平面圖。</p>`;
-            }
-        }
-        
-        // ---------------------------------------------------
-        // 載入單一空間詳細資料 (使用 sID 查詢)
-        // ---------------------------------------------------
-        async function loadSpaceDetails() {
-            const errorMessageEl = document.getElementById("error-message");
-            const sID = getQueryParam('sID'); 
-
-            if (!sID) {
-                errorMessageEl.textContent = "錯誤：網址中缺少 sID 參數，無法查詢詳細資料。";
-                document.getElementById("detail-title").textContent = "錯誤";
-                return;
-            }
-
-            if (typeof SUPABASE_URL === "undefined" || typeof SUPABASE_ANON_KEY === "undefined") {
-                 errorMessageEl.textContent = "錯誤：無法找到 Supabase 連線金鑰，請檢查 config.js。";
-                 return;
-            }
-            
-            const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            errorMessageEl.textContent = "正在查詢資料庫...";
-
-            const { data: results, error } = await supabaseClient
-                .from("TblSpace")
-                .select("*")
-                .eq("sID", sID) 
-                .limit(1); 
-            
-            const data = results && results.length > 0 ? results[0] : null;
-
-            if (error || !data) {
-                errorMessageEl.textContent = `資料查詢失敗或找不到資料：${error ? error.message : '資料不存在'}`;
-                document.getElementById("detail-title").textContent = "查詢失敗";
-                return;
-            }
-
-            errorMessageEl.textContent = "";
-            renderDetails(data);
+            let pic = String(data.PicNo || "");
+            if (pic.includes("E+") || pic.includes(".")) pic = data.SpaceName;
+            loadAndDisplayImage(pic, data.SpaceName);
         }
 
-        window.onload = loadSpaceDetails;
-
+        async function load() {
+            const sID = getParam('sID');
+            if (!sID) return;
+            const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            const { data } = await client.from("TblSpace").select("*").eq("sID", sID).maybeSingle();
+            if (data) renderDetails(data);
+        }
+        window.onload = load;
     </script>
 </body>
 </html>
