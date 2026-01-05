@@ -20,7 +20,6 @@
             --img-container-bg: #1a202c;
         }
 
-        /* --- 深色模式顏色設定 --- */
         body.dark-mode {
             --bg-color: #121212;
             --text-main: #e2e8f0;
@@ -51,7 +50,6 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
         }
 
-        /* 標題與返回按鈕 */
         .header-container { 
             display: flex; justify-content: space-between; align-items: center; 
             border-bottom: 2px solid var(--border-color); padding-bottom: 20px; margin-bottom: 25px;
@@ -73,7 +71,6 @@
             box-shadow: 0 0 15px var(--neon-glow); transform: translateX(-5px);
         }
 
-        /* 詳細資料列表 */
         .info-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px; margin-bottom: 30px;
@@ -89,7 +86,6 @@
         .detail-label { font-weight: 700; font-size: 0.8rem; color: var(--text-second); text-transform: uppercase; }
         .detail-value { font-size: 1.1rem; color: var(--text-main); }
 
-        /* 圖片容器 */
         #image-container { 
             text-align: center; margin-top: 30px; min-height: 300px; 
             background-color: var(--img-container-bg); 
@@ -99,7 +95,6 @@
             border: 2px solid var(--border-color);
         }
 
-        /* 掃描線動畫 */
         #image-container::after {
             content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
             background: rgba(0, 242, 254, 0.2);
@@ -108,7 +103,6 @@
         @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
 
         #image-zoom-wrapper { cursor: zoom-in; width: 100%; padding: 10px; box-sizing: border-box; }
-        
         #space-image { 
             max-width: 100%; height: auto; display: block; margin: 0 auto;
             border-radius: 4px; transition: transform 0.3s;
@@ -117,7 +111,6 @@
 
         #img-status { color: var(--text-second); font-size: 0.9rem; }
 
-        /* 全螢幕燈箱 */
         .fullscreen-overlay { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: rgba(10, 14, 23, 0.95); z-index: 999; 
@@ -133,26 +126,26 @@
             <h1 id="detail-title">LOADING...</h1>
             <a id="back-button" href="index.html">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                BACK TO LIST
+                <span id="ui-back-text">BACK TO LIST</span>
             </a> 
         </div>
 
         <div id="details-content">
             <div class="info-grid">
                 <div class="detail-item">
-                    <span class="detail-label">Campus 校區</span>
+                    <span class="detail-label" id="lbl-campus">Campus 校區</span>
                     <span id="campus-name" class="detail-value">---</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Space ID 編號</span>
+                    <span class="detail-label" id="lbl-space-no">Space ID 編號</span>
                     <span id="space-no" class="detail-value">---</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Space Name 名稱</span>
+                    <span class="detail-label" id="lbl-space-name">Space Name 名稱</span>
                     <span id="space-name" class="detail-value">---</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Location 樓棟/樓層</span>
+                    <span class="detail-label" id="lbl-location">Location 樓棟/樓層</span>
                     <span id="location-text" class="detail-value">---</span>
                 </div>
             </div>
@@ -168,23 +161,48 @@
     <script src="./config.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script>
-        // --- 初始化深色模式 ---
+        // --- 語言與深色模式初始化 ---
+        const currentLang = localStorage.getItem('lang') || 'zh';
+        
         function applyTheme() {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') {
-                document.body.classList.add('dark-mode');
-            } else {
-                document.body.classList.remove('dark-mode');
-            }
+            if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
         }
-        // 立即執行，避免畫面閃爍
         applyTheme();
 
-        const CAMPUS_MAP = { '1': '中央校區', '2': '介仁校區', '3': '建國校區' };
-        const BUILDING_NAMES_MAP = {
-            "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 L 棟" },
-            "2": { "A": "合心樓 2A 棟", "B": "文心樓 2B 棟", "C": "立心樓 2C 棟", "D": "知心樓 2D 棟", "E": "明心樓 2E 棟", "G": "體育館 2A 棟", "H": "活動中心 2A 棟" }
+        const I18N_DETAILS = {
+            zh: {
+                back: "返回列表",
+                campus: "Campus 校區",
+                spaceNo: "Space ID 編號",
+                spaceName: "Space Name 名稱",
+                location: "Location 樓棟/樓層",
+                noMap: "無平面圖數據",
+                mapNotFound: "找不到地圖檔案",
+                campusMap: { '1': '中央校區', '2': '介仁校區', '3': '建國校區' },
+                bldNames: {
+                    "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 T 棟" },
+                    "2": { "A": "合心樓 2A 棟", "B": "文心樓 2B 棟", "C": "立心樓 2C 棟", "D": "知心樓 2D 棟", "E": "明心樓 2E 棟", "G": "體育館 2G 棟", "H": "活動中心 2H 棟" }
+                },
+                floorUnit: " 樓", bldUnit: " 棟"
+            },
+            en: {
+                back: "BACK TO LIST",
+                campus: "Campus",
+                spaceNo: "Space ID",
+                spaceName: "Space Name",
+                location: "Location",
+                noMap: "NO MAP DATA",
+                mapNotFound: "MAP NOT FOUND",
+                campusMap: { '1': 'Main Campus', '2': 'Jieren Campus', '3': 'Jianguo Campus' },
+                bldNames: {
+                    "1": { "A": "Hejing Bldg A", "B": "Hejing Bldg B", "C": "Hejing Bldg C", "D": "Qingeng Bldg D", "E": "Qingeng Bldg E", "F": "Dashe Bldg F", "H": "Futian Bldg H", "L": "Daai Bldg L", "T": "Daxi Bldg T" },
+                    "2": { "A": "Hexin Bldg 2A", "B": "Wenxin Bldg 2B", "C": "Lixin Bldg 2C", "D": "Zhixin Bldg 2D", "E": "Mingxin Bldg 2E", "G": "Gym 2G", "H": "Activity 2H" }
+                },
+                floorUnit: "F", bldUnit: " Bld"
+            }
         };
+
+        const dict = I18N_DETAILS[currentLang];
 
         function getParam(n) { return new URLSearchParams(window.location.search).get(n); }
 
@@ -209,7 +227,7 @@
 
         async function loadAndDisplayImage(picNo, spaceName) {
             const wrap = document.getElementById("image-zoom-wrapper");
-            if (!picNo || picNo === "null") { wrap.innerHTML = "<span style='color:var(--text-second)'>NO MAP DATA</span>"; return; }
+            if (!picNo || picNo === "null") { wrap.innerHTML = `<span style='color:var(--text-second)'>${dict.noMap}</span>`; return; }
             
             const exts = ['png', 'jpg', 'jpeg'];
             let valid = null;
@@ -231,22 +249,30 @@
                     wrap.innerHTML = ""; wrap.appendChild(img); 
                     enableImageZoom(img); 
                 };
-            } else { wrap.innerHTML = "<span style='color:#e53e3e'>MAP NOT FOUND</span>"; }
+            } else { wrap.innerHTML = `<span style='color:#e53e3e'>${dict.mapNotFound}</span>`; }
         }
 
         function renderDetails(data) {
             const kw = getParam('keyword') || "", sID = getParam('sID') || "";
             document.getElementById("back-button").href = `index.html?keyword=${encodeURIComponent(kw)}&highlightID=${encodeURIComponent(sID)}`;
             
+            // 更新靜態標籤文字
+            document.getElementById("ui-back-text").textContent = dict.back;
+            document.getElementById("lbl-campus").textContent = dict.campus;
+            document.getElementById("lbl-space-no").textContent = dict.spaceNo;
+            document.getElementById("lbl-space-name").textContent = dict.spaceName;
+            document.getElementById("lbl-location").textContent = dict.location;
+
+            // 更新資料內容
             document.getElementById("detail-title").textContent = (data.SpaceName || "SPACE DETAIL").toUpperCase();
             document.getElementById("space-name").textContent = data.SpaceName;
-            document.getElementById("campus-name").textContent = CAMPUS_MAP[data.CampusNo] || data.CampusNo;
+            document.getElementById("campus-name").textContent = dict.campusMap[data.CampusNo] || data.CampusNo;
             document.getElementById("space-no").textContent = data.SpaceNo;
             
-            const bMap = BUILDING_NAMES_MAP[data.CampusNo];
+            const bMap = dict.bldNames[data.CampusNo];
             const bNo = String(data.BuildingNo || "");
-            const bName = bMap ? (bMap[bNo] || bMap[bNo.replace(/^2/,'')] || `${bNo} 棟`) : (bNo ? `${bNo} 棟` : "");
-            const fName = data.FloorNo ? `${data.FloorNo} 樓` : "";
+            const bName = bMap ? (bMap[bNo] || bMap[bNo.replace(/^2/,'')] || `${bNo}${dict.bldUnit}`) : (bNo ? `${bNo}${dict.bldUnit}` : "");
+            const fName = data.FloorNo ? `${data.FloorNo}${dict.floorUnit}` : "";
             document.getElementById("location-text").textContent = `${bName} / ${fName}`;
 
             let pic = String(data.PicNo || "");
