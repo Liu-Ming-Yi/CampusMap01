@@ -6,13 +6,26 @@
     <link rel="icon" href="TCUMAP/logo.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        /* --- 科技感核心變數 --- */
+        /* --- 核心變數 --- */
         :root {
             --tech-blue: #007bff;
             --neon-glow: rgba(0, 123, 255, 0.5);
             --glass-bg: rgba(255, 255, 255, 0.8);
             --bg-color: #f0f2f5;
             --text-main: #2c3e50;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --table-head: #f8fafc;
+        }
+
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-main: #e2e8f0;
+            --glass-bg: rgba(30, 30, 30, 0.9);
+            --card-bg: #1e1e1e;
+            --border-color: #333;
+            --table-head: #252525;
+            --neon-glow: rgba(0, 123, 255, 0.3);
         }
 
         body { 
@@ -20,9 +33,9 @@
             margin: 0; padding: 0; 
             background-color: var(--bg-color);
             color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* 滾動條美化 */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
@@ -30,28 +43,40 @@
 
         .main-content-wrapper { max-width: 100%; padding: 0 20px; margin: 20px auto; }
 
-        /* 頂部標題與狀態 */
         .header-bar { 
             display: flex; justify-content: space-between; align-items: center; 
             margin-bottom: 20px; padding: 15px;
             background: var(--glass-bg); backdrop-filter: blur(10px);
-            border-radius: 12px; border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 12px; border: 1px solid var(--border-color);
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-        .header-bar h1 { font-size: 1.4rem; margin: 0; color: #1a202c; letter-spacing: 1px; }
+        .header-bar h1 { font-size: 1.4rem; margin: 0; color: var(--text-main); letter-spacing: 1px; }
         
+        /* 統計標籤樣式 */
         .stat-tag { 
-            background: #fff; padding: 6px 14px; border-radius: 8px; 
-            font-size: 0.85rem; border: 1px solid #e2e8f0;
-            transition: all 0.3s ease;
+            background: var(--card-bg); padding: 6px 14px; border-radius: 8px; 
+            font-size: 0.85rem; border: 1px solid var(--border-color);
+            color: var(--text-main);
+            display: flex; align-items: center; justify-content: center;
+            white-space: nowrap;
         }
-        .stat-tag:hover { border-color: var(--tech-blue); box-shadow: 0 0 10px var(--neon-glow); }
 
-        /* 搜尋列 */
+        #theme-toggle { 
+            cursor: pointer; 
+            font-size: 1.2rem; 
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #theme-toggle:hover { border-color: var(--tech-blue); box-shadow: 0 0 12px var(--neon-glow); transform: scale(1.1); }
+
         .search-bar { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
         .search-bar input, .search-bar select { 
-            padding: 10px 15px; border-radius: 8px; border: 1px solid #cbd5e0; 
-            background: white; outline: none; transition: all 0.3s;
+            padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border-color); 
+            background: var(--card-bg); color: var(--text-main); outline: none; transition: all 0.3s;
         }
         .search-bar input:focus { border-color: var(--tech-blue); box-shadow: 0 0 0 3px var(--neon-glow); }
         
@@ -61,59 +86,40 @@
             color: white; cursor: pointer; font-weight: 600;
             box-shadow: 0 4px 10px rgba(0,86,179,0.3); transition: 0.3s;
         }
-        .search-bar button:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,86,179,0.4); }
 
-        /* 表格容器與設計 */
         .table-container { 
-            width: 100%; overflow-x: auto; background: white; 
-            border-radius: 12px; border: 1px solid #e2e8f0;
+            width: 100%; overflow-x: auto; background: var(--card-bg); 
+            border-radius: 12px; border: 1px solid var(--border-color);
             box-shadow: 0 10px 25px rgba(0,0,0,0.03);
         }
         table { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; }
         
-        /* 置中對齊核心 */
         th, td { 
             text-align: center; vertical-align: middle; 
             padding: 15px 10px; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap;
         }
-
-        /* 第一欄（空間編號）右移設定 */
-        th:first-child, td:first-child {
-            padding-left: 60px; 
-        }
+        th:first-child, td:first-child { padding-left: 60px; }
 
         th { 
-            background: #f8fafc; color: #4a5568; font-weight: 600; text-transform: uppercase;
-            font-size: 0.75rem; letter-spacing: 0.05em; border-bottom: 2px solid #edf2f7;
+            background: var(--table-head); color: var(--text-main); font-weight: 600; text-transform: uppercase;
+            font-size: 0.75rem; letter-spacing: 0.05em; border-bottom: 2px solid var(--border-color);
             cursor: pointer; position: relative; transition: background 0.2s;
         }
-        th:hover { background: #f1f5f9; }
+        th:hover { background: var(--border-color); }
 
-        /* 雙箭頭排序指示器 */
-        .sort-indicator { 
-            display: inline-flex; flex-direction: column; 
-            vertical-align: 3px; 
-            margin-left: 6px; line-height: 0.6;
-        }
+        .sort-indicator { display: inline-flex; flex-direction: column; vertical-align: 3px; margin-left: 6px; line-height: 0.6; }
         .sort-arrow { color: #cbd5e0; font-size: 0.7rem; transition: color 0.2s; }
         .active-asc .arrow-up { color: var(--tech-blue); }
         .active-desc .arrow-down { color: var(--tech-blue); }
 
-        td { border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
-        
-        /* 釘選行 */
-        .highlight-row { 
-            background-color: #f0f7ff !important; 
-            box-shadow: inset 4px 0 0 var(--tech-blue);
-        }
+        td { border-bottom: 1px solid var(--border-color); font-size: 0.9rem; color: var(--text-main); }
+        .highlight-row { background-color: rgba(0, 123, 255, 0.1) !important; box-shadow: inset 4px 0 0 var(--tech-blue); }
         .highlight-row td { color: var(--tech-blue); font-weight: 700; }
 
-        /* 連結樣式 */
         td a { color: var(--tech-blue); text-decoration: none; display: inline-block; width: 100%; }
         td a:hover { text-decoration: underline; }
 
-        /* 返回頂部 */
         #back-to-top {
             display: none; position: fixed; bottom: 30px; right: 30px; 
             width: 50px; height: 50px; 
@@ -121,21 +127,13 @@
             border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
             color: #00f2fe; text-decoration: none; z-index: 1000;
             align-items: center; justify-content: center;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-            opacity: 0; transform: translateY(20px);
+            transition: all 0.4s;
         }
-        #back-to-top.show { display: flex; opacity: 1; transform: translateY(0); }
-        #back-to-top:hover { 
-            background: var(--tech-blue); color: white;
-            box-shadow: 0 0 20px var(--neon-glow); transform: scale(1.1) rotate(5deg);
-        }
-        #back-to-top svg { width: 24px; height: 24px; fill: currentColor; }
+        #back-to-top.show { display: flex; }
 
-        /* 浮動表頭 */
         .floating-header-container { 
             position: fixed; top: 0; z-index: 100; overflow: hidden; 
-            background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
+            background: var(--glass-bg); backdrop-filter: blur(8px);
             display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border-bottom: 1px solid var(--tech-blue);
         }
@@ -146,9 +144,12 @@
     <div class="main-content-wrapper">
         <div class="header-bar">
             <h1>校園尋路 <span style="color:var(--tech-blue)">慈大空間查詢平台</span></h1>
-            <div style="display: flex; gap: 10px;">
-                <div class="stat-tag">在線人數: <span id="online-count" style="color:var(--tech-blue)">1</span></div>
-                <div class="stat-tag">遊覽人數: <span id="visit-total">...</span></div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div id="theme-toggle" title="切換深淺模式">
+                    <span id="theme-icon">🌙</span>
+                </div>
+                <div class="stat-tag">在線人數: <span id="online-count" style="color:var(--tech-blue); margin-left:5px;">1</span></div>
+                <div class="stat-tag">遊覽人數: <span id="visit-total" style="margin-left:5px;">...</span></div>
             </div>
         </div>
 
@@ -178,7 +179,7 @@
     </div>
     
     <a id="back-to-top" href="javascript:window.scrollTo({top:0, behavior:'smooth'});">
-        <svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+        <svg style="width:24px;height:24px" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
     </a>
 
     <script src="./config.js"></script>
@@ -198,25 +199,40 @@
 
                 async init() {
                     this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    this.setupStats();
-                    this.setupOnlinePresence(); // 啟動在線人數追蹤
+                    this.setupTheme(); 
+                    this.setupOnlinePresence(); // 在線人數初始化
+                    this.setupStats();          // 遊覽人數初始化
                     this.renderFilters();
                     this.bindEvents();
                     this.loadFromURL();
                 },
 
-                // --- 新增：即時在線人數監控 ---
+                setupTheme() {
+                    const toggleBtn = document.getElementById('theme-toggle');
+                    const themeIcon = document.getElementById('theme-icon');
+                    const body = document.body;
+                    const savedTheme = localStorage.getItem('theme');
+                    if (savedTheme === 'dark') {
+                        body.classList.add('dark-mode');
+                        themeIcon.textContent = '☀️';
+                    }
+                    toggleBtn.onclick = () => {
+                        body.classList.toggle('dark-mode');
+                        const isDark = body.classList.contains('dark-mode');
+                        themeIcon.textContent = isDark ? '☀️' : '🌙';
+                        localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                    };
+                },
+
+                // 在線人數邏輯 (Realtime Presence)
                 setupOnlinePresence() {
                     const channel = this.supabase.channel('online-users', {
                         config: { presence: { key: 'user-' + Math.random().toString(36).substr(2, 9) } }
                     });
-
                     channel
                         .on('presence', { event: 'sync' }, () => {
                             const state = channel.presenceState();
-                            // 計算當前頻道上的連線總數
-                            const count = Object.keys(state).length;
-                            document.getElementById('online-count').textContent = count;
+                            document.getElementById('online-count').textContent = Object.keys(state).length;
                         })
                         .subscribe(async (status) => {
                             if (status === 'SUBSCRIBED') {
@@ -225,24 +241,23 @@
                         });
                 },
 
+                // 遊覽人數邏輯 (防止重複計入)
                 async setupStats() {
                     try {
-                        const { ip } = await (await fetch('https://api.ipify.org?format=json')).json();
-                        const today = new Date().toISOString().split('T')[0];
+                        const res = await fetch('https://api.ipify.org?format=json');
+                        const { ip } = await res.json();
                         
-                        // 紀錄今日訪問
-                        const { data: exist } = await this.supabase.from('daily_page_views')
-                            .select('id').eq('ip_address', ip).eq('view_date', today).maybeSingle();
+                        // 嘗試插入 (若今日已存在，資料庫會因 Unique Index 拒絕，這很正常)
+                        await this.supabase.from('daily_page_views').insert([{ ip_address: ip }]);
                         
-                        if (!exist) {
-                            await this.supabase.from('daily_page_views').insert([{ ip_address: ip, user_agent: navigator.userAgent }]);
-                        }
+                        // 獲取總不重複人數
+                        const { count, error } = await this.supabase
+                            .from('daily_page_views')
+                            .select('*', { count: 'exact', head: true });
 
-                        // 獲取總累計訪問次數
-                        const { count } = await this.supabase.from('daily_page_views').select('*', { count: 'exact', head: true });
-                        document.getElementById('visit-total').textContent = count || 0;
-                    } catch (e) {
-                        console.error("Stats Error:", e);
+                        if (!error) document.getElementById('visit-total').textContent = count || 0;
+                    } catch (e) { 
+                        console.log("Stats update skipped (Duplicate or Network)"); 
                     }
                 },
 
@@ -284,7 +299,7 @@
                         if (tr.top < 0 && tr.bottom > 150) {
                             fc.style.display = "block"; fc.style.width = mc.offsetWidth + "px";
                             fc.style.left = mc.getBoundingClientRect().left + "px";
-                            fc.scrollLeft = mc.scrollLeft;
+                            fc.style.scrollLeft = mc.scrollLeft;
                         } else { fc.style.display = "none"; }
                     };
                 },
@@ -312,14 +327,7 @@
                 render() {
                     const h = this.COLS.map(c => {
                         const activeClass = this.sortCol === c ? (this.sortDir === 1 ? 'active-asc' : 'active-desc') : '';
-                        return `
-                            <th data-col="${c}" class="${activeClass}">
-                                ${this.COL_NAMES[c]}
-                                <span class="sort-indicator">
-                                    <span class="sort-arrow arrow-up">▴</span>
-                                    <span class="sort-arrow arrow-down">▾</span>
-                                </span>
-                            </th>`;
+                        return `<th data-col="${c}" class="${activeClass}">${this.COL_NAMES[c]}<span class="sort-indicator"><span class="sort-arrow arrow-up">▴</span><span class="sort-arrow arrow-down">▾</span></span></th>`;
                     }).join('');
                     
                     document.getElementById("table-head-row").innerHTML = h;
