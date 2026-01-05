@@ -6,20 +6,39 @@
     <link rel="icon" href="TCUMAP/logo.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        /* 核心變數同步 */
+        /* --- 核心變數同步 (支援深色模式) --- */
         :root {
             --tech-blue: #007bff;
             --neon-glow: rgba(0, 123, 255, 0.5);
             --glass-bg: rgba(255, 255, 255, 0.9);
             --bg-color: #f0f2f5;
+            --text-main: #2c3e50;
+            --text-second: #718096;
+            --card-bg: rgba(255, 255, 255, 0.5);
+            --header-text: #1a202c;
+            --border-color: #edf2f7;
+            --img-container-bg: #1a202c;
+        }
+
+        /* --- 深色模式顏色設定 --- */
+        body.dark-mode {
+            --bg-color: #121212;
+            --text-main: #e2e8f0;
+            --text-second: #a0aec0;
+            --glass-bg: rgba(30, 30, 30, 0.95);
+            --card-bg: rgba(45, 55, 72, 0.4);
+            --header-text: #f7fafc;
+            --border-color: #333;
+            --img-container-bg: #000000;
         }
 
         body { 
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
             margin: 0; padding: 20px; 
             background-color: var(--bg-color); 
-            color: #2c3e50; 
+            color: var(--text-main); 
             display: flex; justify-content: center;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .container { 
@@ -28,17 +47,17 @@
             backdrop-filter: blur(15px);
             padding: 30px; 
             border-radius: 16px; 
-            border: 1px solid rgba(255,255,255,0.4);
+            border: 1px solid var(--border-color);
             box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
         }
 
         /* 標題與返回按鈕 */
         .header-container { 
             display: flex; justify-content: space-between; align-items: center; 
-            border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 25px;
+            border-bottom: 2px solid var(--border-color); padding-bottom: 20px; margin-bottom: 25px;
         }
         h1 { 
-            color: #1a202c; margin: 0; font-size: 1.6rem; 
+            color: var(--header-text); margin: 0; font-size: 1.6rem; 
             letter-spacing: 1px; border-left: 5px solid var(--tech-blue); padding-left: 15px;
         }
         
@@ -62,25 +81,25 @@
 
         .detail-item { 
             display: flex; flex-direction: column; gap: 5px;
-            background: rgba(255,255,255,0.5); padding: 15px; border-radius: 10px;
-            border: 1px solid #edf2f7; transition: 0.3s;
+            background: var(--card-bg); padding: 15px; border-radius: 10px;
+            border: 1px solid var(--border-color); transition: 0.3s;
         }
-        .detail-item:hover { border-color: var(--tech-blue); background: #fff; }
+        .detail-item:hover { border-color: var(--tech-blue); transform: translateY(-3px); }
 
-        .detail-label { font-weight: 700; font-size: 0.8rem; color: #718096; text-transform: uppercase; }
-        .detail-value { font-size: 1.1rem; color: #2d3748; }
+        .detail-label { font-weight: 700; font-size: 0.8rem; color: var(--text-second); text-transform: uppercase; }
+        .detail-value { font-size: 1.1rem; color: var(--text-main); }
 
-        /* 圖片容器：霓虹發光效果 */
+        /* 圖片容器 */
         #image-container { 
             text-align: center; margin-top: 30px; min-height: 300px; 
-            background-color: #1a202c; /* 深色底襯托平面圖 */
+            background-color: var(--img-container-bg); 
             display: flex; align-items: center; justify-content: center; 
             border-radius: 12px; position: relative; overflow: hidden;
             box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
-            border: 2px solid #2d3748;
+            border: 2px solid var(--border-color);
         }
 
-        /* 掃描線動畫效果 */
+        /* 掃描線動畫 */
         #image-container::after {
             content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
             background: rgba(0, 242, 254, 0.2);
@@ -96,7 +115,7 @@
             filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.3));
         }
 
-        #img-status { color: #718096; font-size: 0.9rem; }
+        #img-status { color: var(--text-second); font-size: 0.9rem; }
 
         /* 全螢幕燈箱 */
         .fullscreen-overlay { 
@@ -149,6 +168,18 @@
     <script src="./config.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script>
+        // --- 初始化深色模式 ---
+        function applyTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        }
+        // 立即執行，避免畫面閃爍
+        applyTheme();
+
         const CAMPUS_MAP = { '1': '中央校區', '2': '介仁校區', '3': '建國校區' };
         const BUILDING_NAMES_MAP = {
             "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 L 棟" },
@@ -178,7 +209,7 @@
 
         async function loadAndDisplayImage(picNo, spaceName) {
             const wrap = document.getElementById("image-zoom-wrapper");
-            if (!picNo || picNo === "null") { wrap.innerHTML = "<span style='color:#718096'>NO MAP DATA</span>"; return; }
+            if (!picNo || picNo === "null") { wrap.innerHTML = "<span style='color:var(--text-second)'>NO MAP DATA</span>"; return; }
             
             const exts = ['png', 'jpg', 'jpeg'];
             let valid = null;
@@ -213,7 +244,8 @@
             document.getElementById("space-no").textContent = data.SpaceNo;
             
             const bMap = BUILDING_NAMES_MAP[data.CampusNo];
-            const bName = bMap ? (bMap[data.BuildingNo] || bMap[data.BuildingNo.replace(/^2/,'')] || `${data.BuildingNo} 棟`) : (data.BuildingNo ? `${data.BuildingNo} 棟` : "");
+            const bNo = String(data.BuildingNo || "");
+            const bName = bMap ? (bMap[bNo] || bMap[bNo.replace(/^2/,'')] || `${bNo} 棟`) : (bNo ? `${bNo} 棟` : "");
             const fName = data.FloorNo ? `${data.FloorNo} 樓` : "";
             document.getElementById("location-text").textContent = `${bName} / ${fName}`;
 
