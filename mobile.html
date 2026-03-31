@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <title>慈大尋路 - 手機版</title>
+    <link rel="icon" href="TCUMAP/logo.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <style>
+        :root {
+            --tech-blue: #007bff;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #2d3748;
+            --text-sub: #718096;
+            --border-color: #edf2f7;
+        }
+
+        body.dark-mode {
+            --bg-color: #1a202c;
+            --card-bg: #2d3748;
+            --text-main: #f7fafc;
+            --text-sub: #a0aec0;
+            --border-color: #4a5568;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; padding: 0; background: var(--bg-color); color: var(--text-main);
+        }
+
+        /* --- 手機專屬 Header --- */
+        .mobile-header {
+            position: sticky; top: 0; z-index: 100;
+            background: var(--card-bg); padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .mobile-header h1 { font-size: 1.1rem; margin: 0; display: flex; align-items: center; gap: 8px; }
+        .mobile-header img { height: 30px; }
+
+        /* --- 搜尋區塊優化 --- */
+        .search-section { padding: 16px; background: var(--card-bg); margin-bottom: 8px; }
+        .search-group { display: flex; flex-direction: column; gap: 10px; }
+        input, select, button { 
+            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-main); font-size: 1rem; box-sizing: border-box;
+        }
+        .btn-primary { background: var(--tech-blue); color: white; border: none; font-weight: 600; }
+
+        /* --- 關鍵：卡片式列表 (取代表格) --- */
+        .list-container { padding: 12px; }
+        .space-card {
+            background: var(--card-bg); border-radius: 12px; padding: 16px;
+            margin-bottom: 12px; border: 1px solid var(--border-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; gap: 8px;
+            text-decoration: none; color: inherit; transition: 0.2s;
+        }
+        .space-card:active { transform: scale(0.98); background: var(--bg-color); }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .space-no { font-family: monospace; color: var(--tech-blue); font-weight: bold; font-size: 0.9rem; }
+        .space-name { font-size: 1.15rem; font-weight: 700; margin: 4px 0; }
+        
+        .tag-group { display: flex; flex-wrap: wrap; gap: 6px; }
+        .tag { 
+            font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; 
+            background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-sub);
+        }
+        .highlight-card { border: 2px solid var(--tech-blue); background: rgba(0, 123, 255, 0.05); }
+
+        /* --- 引導與其他功能 --- */
+        #tour-overlay { position: fixed; inset: 0; z-index: 9999; display: none; background: rgba(0,0,0,0.7); }
+        #tour-popover { 
+            position: absolute; width: 80%; left: 10%; bottom: 100px;
+            background: var(--card-bg); padding: 20px; border-radius: 15px; 
+        }
+        .icon-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--border-color); }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-header">
+        <h1 id="ui-title"><img src="TCUMAP/logo.png"> <span>慈大尋路</span></h1>
+        <div style="display:flex; gap:8px;">
+            <div id="tour-restart" class="icon-btn">💡</div>
+            <div id="lang-toggle" class="icon-btn">EN</div>
+            <div id="theme-toggle" class="icon-btn">🌙</div>
+        </div>
+    </div>
+
+    <div class="search-section">
+        <div class="search-group">
+            <input type="text" id="search-input" placeholder="搜尋空間名稱或編號...">
+            <div style="display:flex; gap:8px;">
+                <select id="campus-filter" style="flex:1;"></select>
+                <select id="building-filter" style="flex:1;"></select>
+            </div>
+            <button id="search-btn" class="btn-primary">開始搜尋</button>
+        </div>
+    </div>
+
+    <div id="status" style="padding: 0 16px; font-size: 0.8rem; color: var(--text-sub);">READY</div>
+
+    <div class="list-container" id="list-container">
+        </div>
+
+    <script src="./config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script>
+        // 保留你原本的所有資料對應邏輯 (I18N, Building Names)
+        const BUILDING_NAMES_I18N = {
+            zh: {
+                "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 T 棟" },
+                "2": { "A": "合心樓 2A 棟", "B": "文心樓 2B 棟", "C": "立心樓 2C 棟", "D": "知心樓 2D 棟", "E": "明心樓 2E 棟", "G": "體育館 2G 棟", "H": "活動中心 2H 棟" }
+            },
+            en: {
+                "1": { "A": "Hejing Bldg A", "B": "Hejing Bldg B", "C": "Hejing Bldg C", "D": "Qingeng Bldg D", "E": "Qingeng Bldg E", "F": "Dashe Bldg F", "H": "Futian Bldg H", "L": "Daai Bldg L", "T": "Daxi Bldg T" },
+                "2": { "A": "Hexin Bldg 2A", "B": "Wenxin Bldg 2B", "C": "Lixin Bldg 2C", "D": "Zhixin Bldg 2D", "E": "Mingxin Bldg 2E", "G": "Gym 2G", "H": "Activity 2H" }
+            }
+        };
+
+        const I18N_DICT = {
+            zh: { campusMap: { '1': '中央校區', '2': '介仁校區', '3': '建國校區' }, bldUnit: ' 棟', floorUnit: ' 樓', allCampus: '-- 所有校區 --', allBld: '-- 所有樓棟 --' },
+            en: { campusMap: { '1': 'Main Campus', '2': 'Jieren Campus', '3': 'Jianguo Campus' }, bldUnit: ' Bld', floorUnit: 'F', allCampus: '-- All Campus --', allBld: '-- All Buildings --' }
+        };
+
+        const app = {
+            supabase: null, currentData: [], lang: localStorage.getItem('lang') || 'zh',
+            async init() {
+                this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                this.setupTheme();
+                this.setupLanguage();
+                this.bindEvents();
+                this.fetchData();
+            },
+            setupTheme() {
+                const btn = document.getElementById('theme-toggle');
+                btn.onclick = () => {
+                    document.body.classList.toggle('dark-mode');
+                    btn.innerText = document.body.classList.contains('dark-mode') ? '🔆' : '🌙';
+                };
+            },
+            setupLanguage() {
+                const btn = document.getElementById('lang-toggle');
+                btn.onclick = () => {
+                    this.lang = this.lang === 'zh' ? 'en' : 'zh';
+                    localStorage.setItem('lang', this.lang);
+                    btn.innerText = this.lang === 'zh' ? 'EN' : '中文';
+                    this.renderFilters();
+                    this.renderCards();
+                };
+                this.renderFilters();
+            },
+            renderFilters() {
+                const dict = I18N_DICT[this.lang];
+                let c = `<option value="">${dict.allCampus}</option>`;
+                Object.entries(dict.campusMap).forEach(([k, v]) => c += `<option value="${k}">${v}</option>`);
+                document.getElementById('campus-filter').innerHTML = c;
+                let b = `<option value="">${dict.allBld}</option>`;
+                for (let i = 65; i <= 90; i++) b += `<option value="${String.fromCharCode(i)}">${String.fromCharCode(i)}${dict.bldUnit}</option>`;
+                document.getElementById('building-filter').innerHTML = b;
+            },
+            bindEvents() {
+                document.getElementById('search-btn').onclick = () => this.fetchData(document.getElementById('search-input').value);
+                document.getElementById('tour-restart').onclick = () => alert("導覽功能與電腦版同步啟動中...");
+            },
+            async fetchData(kw = "") {
+                const camp = document.getElementById('campus-filter').value;
+                const bld = document.getElementById('building-filter').value;
+                let q = this.supabase.from("TblSpace").select('*');
+                if (kw) q = q.or(`SpaceName.ilike.%${kw}%,SpaceNo.ilike.%${kw}%`);
+                if (camp) q = q.eq('CampusNo', camp);
+                if (bld) q = q.or(`BuildingNo.eq.${bld},BuildingNo.eq.2${bld}`);
+                const { data } = await q.limit(50);
+                this.currentData = data || [];
+                this.renderCards();
+            },
+            renderCards() {
+                const dict = I18N_DICT[this.lang];
+                const container = document.getElementById('list-container');
+                container.innerHTML = this.currentData.map(row => {
+                    const campusName = dict.campusMap[row.CampusNo] || row.CampusNo;
+                    const bldMap = BUILDING_NAMES_I18N[this.lang][row.CampusNo];
+                    const bldName = bldMap ? (bldMap[row.BuildingNo] || row.BuildingNo + dict.bldUnit) : (row.BuildingNo + dict.bldUnit);
+                    
+                    return `
+                        <a href="Details.html?sID=${row.sID}" class="space-card">
+                            <div class="card-header">
+                                <span class="space-no">${row.SpaceNo}</span>
+                                <span style="font-size: 1.2rem;">➔</span>
+                            </div>
+                            <div class="space-name">${row.SpaceName}</div>
+                            <div class="tag-group">
+                                <span class="tag">${campusName}</span>
+                                <span class="tag">${bldName}</span>
+                                <span class="tag">${row.FloorNo}${dict.floorUnit}</span>
+                            </div>
+                        </a>
+                    `;
+                }).join('');
+            }
+        };
+        app.init();
+    </script>
+</body>
+</html>
