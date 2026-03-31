@@ -36,6 +36,47 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
+        /* --- 引導教學 CSS (強化點擊層級) --- */
+        #tour-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 9998; display: none; 
+            pointer-events: auto; 
+        }
+
+        .tour-spotlight {
+            position: absolute; 
+            z-index: 9999;
+            border-radius: 8px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none; 
+        }
+
+        #tour-popover {
+            position: absolute; 
+            z-index: 10000; 
+            width: 280px; background: var(--card-bg);
+            border: 1px solid var(--tech-blue); border-radius: 12px;
+            padding: 20px; pointer-events: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        #tour-popover h3 { margin: 0 0 10px 0; color: var(--tech-blue); font-size: 1.1rem; }
+        #tour-popover p { margin: 0 0 20px 0; font-size: 0.9rem; line-height: 1.5; color: var(--text-main); }
+        
+        .tour-footer { display: flex; justify-content: space-between; align-items: center; }
+        .tour-step-info { font-size: 0.75rem; color: #718096; }
+        .tour-btn {
+            padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-main); cursor: pointer;
+            font-size: 0.85rem; font-weight: 600; transition: 0.2s;
+        }
+        .tour-btn:hover { background: var(--table-head); }
+        .tour-btn-next { background: var(--tech-blue); color: #fff; border: none; }
+        .tour-btn-next:hover { background: #0056b3; }
+
+        /* --- 頁面樣式 --- */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
@@ -50,24 +91,29 @@
             border-radius: 12px; border: 1px solid var(--border-color);
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-        .header-bar h1 { font-size: 1.4rem; margin: 0; color: var(--text-main); letter-spacing: 1px; }
+
+        .header-bar h1 { 
+            display: flex; align-items: center; gap: 12px;
+            font-size: 1.4rem; margin: 0; color: var(--text-main); letter-spacing: 1px; 
+        }
+
+        .header-logo { height: 40px; width: auto; object-fit: contain; }
         
         .stat-tag { 
             background: var(--card-bg); padding: 6px 14px; border-radius: 8px; 
             font-size: 0.85rem; border: 1px solid var(--border-color);
-            color: var(--text-main);
-            display: flex; align-items: center; justify-content: center;
+            color: var(--text-main); display: flex; align-items: center; justify-content: center;
             white-space: nowrap;
         }
 
-        #theme-toggle, #lang-toggle { 
-            cursor: pointer; font-size: 1.2rem; width: 42px; height: 42px;
+        .icon-btn-circle {
+            cursor: pointer; font-size: 1.1rem; width: 42px; height: 42px;
             border-radius: 50%; background: var(--card-bg);
             border: 1px solid var(--border-color);
             display: flex; align-items: center; justify-content: center;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #theme-toggle:hover, #lang-toggle:hover { border-color: var(--tech-blue); box-shadow: 0 0 12px var(--neon-glow); transform: scale(1.1); }
+        .icon-btn-circle:hover { border-color: var(--tech-blue); box-shadow: 0 0 12px var(--neon-glow); transform: scale(1.1); }
         
         #lang-toggle { font-size: 0.85rem; font-weight: bold; color: var(--tech-blue); }
 
@@ -93,16 +139,14 @@
         table { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; }
         
         th, td { text-align: center; vertical-align: middle; padding: 15px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        th:first-child, td:first-child { padding-left: 60px; }
-
         th { 
             background: var(--table-head); color: var(--text-main); font-weight: 600; text-transform: uppercase;
             font-size: 0.75rem; letter-spacing: 0.05em; border-bottom: 2px solid var(--border-color);
             cursor: pointer; position: relative; transition: background 0.2s;
         }
 
-        .sort-indicator { display: inline-flex; flex-direction: column; vertical-align: 3px; margin-left: 6px; line-height: 0.6; }
-        .sort-arrow { color: #cbd5e0; font-size: 0.7rem; }
+        .sort-indicator { display: inline-flex; flex-direction: column; vertical-align: 4px; margin-left: 6px; line-height: 0.8; gap: 3px; transform: translateY(-2px);}
+        .sort-arrow { color: #cbd5e0; font-size: 0.4rem; }
         .active-asc .arrow-up { color: var(--tech-blue); }
         .active-desc .arrow-down { color: var(--tech-blue); }
 
@@ -131,12 +175,31 @@
 </head>
 <body>
 
+    <div id="tour-overlay">
+        <div class="tour-spotlight" id="tour-spotlight"></div>
+        <div id="tour-popover">
+            <h3 id="tour-title">標題</h3>
+            <p id="tour-desc">內容說明</p>
+            <div class="tour-footer">
+                <span class="tour-step-info" id="tour-step-count">1/5</span>
+                <div style="display:flex; gap:8px;">
+                    <button class="tour-btn" id="tour-skip">跳過</button>
+                    <button class="tour-btn tour-btn-next" id="tour-next">下一步</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="main-content-wrapper">
         <div class="header-bar">
-            <h1 id="ui-main-title">校園尋路 <span style="color:var(--tech-blue)">慈大空間查詢平台</span></h1>
+            <h1 id="ui-main-title">
+                <img src="TCUMAP/logo.png" alt="Logo" class="header-logo">
+                <span id="ui-main-title-text">校園尋路 <span style="color:var(--tech-blue)">慈大空間查詢平台</span></span>
+            </h1>
             <div style="display: flex; gap: 12px; align-items: center;">
-                <div id="lang-toggle" title="Switch Language">EN</div>
-                <div id="theme-toggle" title="切換深淺模式">
+                <div id="tour-restart" class="icon-btn-circle" title="顯示幫助教學">💡</div>
+                <div id="lang-toggle" class="icon-btn-circle" title="Switch Language">EN</div>
+                <div id="theme-toggle" class="icon-btn-circle" title="切換深淺模式">
                     <span id="theme-icon">🌙</span>
                 </div>
                 <div class="stat-tag"><span id="ui-online-label">在線人數</span>: <span id="online-count" style="color:var(--tech-blue); margin-left:5px;">1</span></div>
@@ -177,7 +240,109 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 建築物名稱對照表 (i18n)
+            
+            // --- 引導教學邏輯 (完全修復點擊問題，並保留翻譯設定) ---
+            const Onboarding = {
+                currentStep: 0,
+                lang: 'zh',
+                steps: {
+                    zh: [
+                        { target: 'search-input', title: '快速搜尋', desc: '輸入編號（如 L0304）或空間名稱關鍵字即可快速查找。' },
+                        { target: 'campus-filter', title: '校區與樓棟', desc: '您可以直接篩選特定的校區與教學大樓。' },
+                        { target: 'lang-toggle', title: '多語系切換', desc: '點擊此處可在 中文 與 English 介面間切換。' },
+                        { target: 'theme-toggle', title: '深淺模式', desc: '切換視覺風格，保護您的眼睛。' },
+                        { target: 'table-head-row', title: '點擊排序', desc: '點擊表頭欄位名稱（如：空間編號），可進行升冪或降冪排序。' }
+                    ],
+                    en: [
+                        { target: 'search-input', title: 'Quick Search', desc: 'Type Space ID (e.g., L0304) or keywords to find spaces.' },
+                        { target: 'campus-filter', title: 'Campus Filter', desc: 'Filter by specific campus or building blocks.' },
+                        { target: 'lang-toggle', title: 'Language', desc: 'Switch between Chinese and English.' },
+                        { target: 'theme-toggle', title: 'Visual Theme', desc: 'Toggle between Dark and Light modes.' },
+                        { target: 'table-head-row', title: 'Sort Data', desc: 'Click column headers (e.g., Space ID) to sort the results.' }
+                    ]
+                },
+                init(lang) {
+                    this.lang = lang || 'zh';
+                    
+                    // 強制綁定按鈕事件，不論是否完成過導覽，確保 DOM 掛載正確
+                    const nextBtn = document.getElementById('tour-next');
+                    const skipBtn = document.getElementById('tour-skip');
+                    
+                    nextBtn.onclick = (e) => { e.stopPropagation(); this.next(); };
+                    skipBtn.onclick = (e) => { e.stopPropagation(); this.finish(); };
+
+                    if (localStorage.getItem('tcu_tour_done') === 'true') return;
+
+                    setTimeout(() => {
+                        this.start();
+                    }, 1200);
+                },
+                start() {
+                    document.getElementById('tour-overlay').style.display = 'block';
+                    this.render();
+                },
+                render() {
+                    const config = this.steps[this.lang];
+                    const step = config[this.currentStep];
+                    const targetEl = document.getElementById(step.target);
+                    
+                    if (!targetEl || targetEl.offsetHeight === 0) {
+                        if (this.currentStep < config.length - 1) {
+                            this.currentStep++;
+                            this.render();
+                        }
+                        return;
+                    }
+
+                    document.getElementById('tour-title').innerText = step.title;
+                    document.getElementById('tour-desc').innerText = step.desc;
+                    document.getElementById('tour-step-count').innerText = `${this.currentStep + 1} / ${config.length}`;
+                    
+                    const nextText = this.currentStep === config.length - 1 
+                        ? (this.lang === 'zh' ? '完成' : 'Finish') 
+                        : (this.lang === 'zh' ? '下一步' : 'Next');
+                    document.getElementById('tour-next').innerText = nextText;
+                    document.getElementById('tour-skip').innerText = this.lang === 'zh' ? '跳過' : 'Skip';
+
+                    const rect = targetEl.getBoundingClientRect();
+                    const spotlight = document.getElementById('tour-spotlight');
+                    const popover = document.getElementById('tour-popover');
+                    
+                    // 考慮捲動位置計算聚光燈
+                    spotlight.style.width = `${rect.width + 10}px`;
+                    spotlight.style.height = `${rect.height + 10}px`;
+                    spotlight.style.left = `${rect.left - 5}px`;
+                    spotlight.style.top = `${rect.top - 5}px`;
+
+                    let popTop = rect.bottom + 15;
+                    let popLeft = rect.left + (rect.width / 2) - 140;
+
+                    if (popLeft < 20) popLeft = 20;
+                    if (popLeft + 280 > window.innerWidth - 20) popLeft = window.innerWidth - 300;
+                    if (popTop + 180 > window.innerHeight) popTop = rect.top - 180;
+
+                    popover.style.left = `${popLeft}px`;
+                    popover.style.top = `${popTop}px`;
+                    
+                    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                },
+                next() {
+                    const config = this.steps[this.lang];
+                    if (this.currentStep < config.length - 1) {
+                        this.currentStep++;
+                        this.render();
+                    } else {
+                        this.finish();
+                    }
+                },
+                finish() {
+                    document.getElementById('tour-overlay').style.display = 'none';
+                    localStorage.setItem('tcu_tour_done', 'true');
+                    this.currentStep = 0;
+                }
+            };
+
+            // --- 原有的所有細節設定 (保留) ---
             const BUILDING_NAMES_I18N = {
                 zh: {
                     "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 T 棟" },
@@ -189,7 +354,6 @@
                 }
             };
 
-            // 介面文字語言包
             const I18N_DICT = {
                 zh: {
                     mainTitle: '校園尋路 <span style="color:var(--tech-blue)">慈大空間查詢平台</span>',
@@ -213,16 +377,17 @@
 
             const app = {
                 supabase: null, currentData: [], highlightID: null, sortCol: 'SpaceNo', sortDir: 1,
-                lang: localStorage.getItem('lang') || 'zh', // 預設語言
+                lang: localStorage.getItem('lang') || 'zh',
 
                 async init() {
                     this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     this.setupTheme(); 
-                    this.setupLanguage(); // 初始化語言
+                    this.setupLanguage(); 
                     this.setupOnlinePresence();
                     this.setupStats();
                     this.bindEvents();
                     this.loadFromURL();
+                    Onboarding.init(this.lang);
                 },
 
                 setupTheme() {
@@ -242,13 +407,11 @@
                     };
                 },
 
-                // 新增語言切換邏輯
                 setupLanguage() {
                     const langBtn = document.getElementById('lang-toggle');
                     const updateUI = () => {
                         const dict = I18N_DICT[this.lang];
-                        // 更新標題與靜態文字
-                        document.getElementById('ui-main-title').innerHTML = dict.mainTitle;
+                        document.getElementById('ui-main-title-text').innerHTML = dict.mainTitle;
                         document.getElementById('ui-online-label').textContent = dict.online;
                         document.getElementById('ui-visit-label').textContent = dict.visit;
                         document.getElementById('status').textContent = dict.systemReady;
@@ -256,11 +419,10 @@
                         document.getElementById('search-btn').textContent = dict.searchBtn;
                         langBtn.textContent = this.lang === 'zh' ? 'EN' : '中文';
                         
-                        // 更新下拉選單與表格
                         this.renderFilters();
                         if (this.currentData.length > 0) this.sortAndRender();
+                        Onboarding.lang = this.lang;
                     };
-
                     langBtn.onclick = () => {
                         this.lang = this.lang === 'zh' ? 'en' : 'zh';
                         localStorage.setItem('lang', this.lang);
@@ -287,18 +449,10 @@
                     try {
                         const res = await fetch('https://api.ipify.org?format=json');
                         const { ip } = await res.json();
-                        await this.supabase
-                            .from('daily_page_views')
-                            .upsert({ ip_address: ip }, { onConflict: 'ip_address,view_date' });
-
-                        const { count, error } = await this.supabase
-                            .from('daily_page_views')
-                            .select('*', { count: 'exact', head: true });
-
+                        await this.supabase.from('daily_page_views').upsert({ ip_address: ip }, { onConflict: 'ip_address,view_date' });
+                        const { count, error } = await this.supabase.from('daily_page_views').select('*', { count: 'exact', head: true });
                         if (!error) document.getElementById('visit-total').textContent = count || 0;
-                    } catch (e) { 
-                        console.log("Stats Loaded"); 
-                    }
+                    } catch (e) { }
                 },
 
                 renderFilters() {
@@ -306,7 +460,6 @@
                     let c = `<option value="">${dict.allCampus}</option>`;
                     Object.entries(dict.campusMap).forEach(([k, v]) => c += `<option value="${k}">${v}</option>`);
                     document.getElementById('campus-filter').innerHTML = c;
-
                     let b = `<option value="">${dict.allBld}</option>`;
                     for (let i = 65; i <= 90; i++) {
                         const char = String.fromCharCode(i);
@@ -335,6 +488,13 @@
                     };
                     document.getElementById("table-head-row").onclick = sortClick;
                     document.getElementById("floating-thead").onclick = sortClick;
+                    
+                    //💡重啟導覽按鈕修正
+                    document.getElementById('tour-restart').onclick = () => {
+                        localStorage.removeItem('tcu_tour_done');
+                        Onboarding.currentStep = 0;
+                        Onboarding.start();
+                    };
 
                     window.onscroll = () => {
                         const t = document.getElementById("space-table"), fc = document.getElementById("floating-header-container"), 
@@ -372,7 +532,7 @@
                     const dict = I18N_DICT[this.lang];
                     const h = colKeys.map(c => {
                         const activeClass = this.sortCol === c ? (this.sortDir === 1 ? 'active-asc' : 'active-desc') : '';
-                        return `<th data-col="${c}" class="${activeClass}">${dict.colNames[c]}<span class="sort-indicator"><span class="sort-arrow arrow-up">▴</span><span class="sort-arrow arrow-down">▾</span></span></th>`;
+                        return `<th data-col="${c}" class="${activeClass}">${dict.colNames[c]}<span class="sort-indicator"><span class="sort-arrow arrow-up">▲</span><span class="sort-arrow arrow-down">▼</span></span></th>`;
                     }).join('');
                     
                     document.getElementById("table-head-row").innerHTML = h;
@@ -406,8 +566,9 @@
 
                 loadFromURL() {
                     const p = new URLSearchParams(window.location.search);
-                    this.fetchData(p.get('keyword') || "", p.get('highlightID'));
-                    document.getElementById('search-input').value = p.get('keyword') || "";
+                    const kw = p.get('keyword') || "";
+                    this.fetchData(kw, p.get('highlightID'));
+                    document.getElementById('search-input').value = kw;
                 }
             };
             app.init();
