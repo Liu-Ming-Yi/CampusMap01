@@ -18,6 +18,7 @@
             --table-head: #f8fafc;
         }
 
+        /* 採用你指定的夜間模式顏色設定 */
         body.dark-mode {
             --bg-color: #121212;
             --text-main: #e2e8f0;
@@ -25,7 +26,8 @@
             --card-bg: #1e1e1e;
             --border-color: #333;
             --table-head: #252525;
-            --neon-glow: rgba(0, 123, 255, 0.3);
+            --neon-glow: rgba(255, 140, 0, 0.6);
+            --tech-blue: #ff8400; /* 科技橘 */
         }
 
         body { 
@@ -36,35 +38,26 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* --- 引導教學 CSS (強化點擊層級) --- */
+        /* --- 引導教學 CSS (index.html 核心功能) --- */
         #tour-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 9998; display: none; 
-            pointer-events: auto; 
+            z-index: 9998; display: none; pointer-events: auto; 
         }
-
         .tour-spotlight {
-            position: absolute; 
-            z-index: 9999;
-            border-radius: 8px;
+            position: absolute; z-index: 9999; border-radius: 8px;
             box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             pointer-events: none; 
         }
-
         #tour-popover {
-            position: absolute; 
-            z-index: 10000; 
-            width: 280px; background: var(--card-bg);
+            position: absolute; z-index: 10000; width: 280px; background: var(--card-bg);
             border: 1px solid var(--tech-blue); border-radius: 12px;
             padding: 20px; pointer-events: auto;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
             transition: opacity 0.3s ease, transform 0.3s ease;
         }
-
         #tour-popover h3 { margin: 0 0 10px 0; color: var(--tech-blue); font-size: 1.1rem; }
         #tour-popover p { margin: 0 0 20px 0; font-size: 0.9rem; line-height: 1.5; color: var(--text-main); }
-        
         .tour-footer { display: flex; justify-content: space-between; align-items: center; }
         .tour-step-info { font-size: 0.75rem; color: #718096; }
         .tour-btn {
@@ -74,9 +67,9 @@
         }
         .tour-btn:hover { background: var(--table-head); }
         .tour-btn-next { background: var(--tech-blue); color: #fff; border: none; }
-        .tour-btn-next:hover { background: #0056b3; }
+        .tour-btn-next:hover { opacity: 0.9; }
 
-        /* --- 頁面樣式 --- */
+        /* --- 頁面通用樣式 --- */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 10px; }
@@ -91,12 +84,7 @@
             border-radius: 12px; border: 1px solid var(--border-color);
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
-
-        .header-bar h1 { 
-            display: flex; align-items: center; gap: 12px;
-            font-size: 1.4rem; margin: 0; color: var(--text-main); letter-spacing: 1px; 
-        }
-
+        .header-bar h1 { display: flex; align-items: center; gap: 12px; font-size: 1.4rem; margin: 0; color: var(--text-main); letter-spacing: 1px; }
         .header-logo { height: 40px; width: auto; object-fit: contain; }
         
         .stat-tag { 
@@ -114,8 +102,6 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .icon-btn-circle:hover { border-color: var(--tech-blue); box-shadow: 0 0 12px var(--neon-glow); transform: scale(1.1); }
-        
-        #lang-toggle { font-size: 0.85rem; font-weight: bold; color: var(--tech-blue); }
 
         .search-bar { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
         .search-bar input, .search-bar select { 
@@ -126,7 +112,7 @@
         
         .search-bar button { 
             padding: 10px 20px; border-radius: 8px; border: none; 
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            background: linear-gradient(135deg, var(--tech-blue) 0%, #b300ad 100%);
             color: white; cursor: pointer; font-weight: 600;
             box-shadow: 0 4px 10px rgba(0,86,179,0.3); transition: 0.3s;
         }
@@ -139,6 +125,10 @@
         table { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; }
         
         th, td { text-align: center; vertical-align: middle; padding: 15px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        /* 併入你設計的表格首欄寬間距 */
+        th:first-child, td:first-child { padding-left: 60px; }
+
         th { 
             background: var(--table-head); color: var(--text-main); font-weight: 600; text-transform: uppercase;
             font-size: 0.75rem; letter-spacing: 0.05em; border-bottom: 2px solid var(--border-color);
@@ -164,6 +154,13 @@
             color: #00f2fe; z-index: 1000; align-items: center; justify-content: center; transition: 0.4s;
         }
         #back-to-top.show { display: flex; }
+
+        /* 併入你設計的夜間模式回到頂端按鈕樣式 */
+        body.dark-mode #back-to-top {
+            background: #cfc9be;   /* 背景色 */
+            color: #ff0d01;        /* 箭頭色 */
+            border: 1px solid #ff8400;
+        }
 
         .floating-header-container { 
             position: fixed; top: 0; z-index: 100; overflow: hidden; 
@@ -214,7 +211,7 @@
             <select id="campus-filter"></select>
             <select id="building-filter"></select>
             <button id="search-btn">搜尋空間</button>
-            <button id="reset-btn" style="display:none; background: #e53e3e;">RESET</button>
+            <button id="reset-btn" style="display:none; background: #32b42d;">RESET</button>
         </div>
 
         <div class="table-container" id="table-container">
@@ -241,7 +238,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             
-            // --- 引導教學邏輯 (完全修復點擊問題，並保留翻譯設定) ---
+            // --- 引導教學邏輯 ---
             const Onboarding = {
                 currentStep: 0,
                 lang: 'zh',
@@ -263,19 +260,13 @@
                 },
                 init(lang) {
                     this.lang = lang || 'zh';
-                    
-                    // 強制綁定按鈕事件，不論是否完成過導覽，確保 DOM 掛載正確
                     const nextBtn = document.getElementById('tour-next');
                     const skipBtn = document.getElementById('tour-skip');
-                    
                     nextBtn.onclick = (e) => { e.stopPropagation(); this.next(); };
                     skipBtn.onclick = (e) => { e.stopPropagation(); this.finish(); };
 
                     if (localStorage.getItem('tcu_tour_done') === 'true') return;
-
-                    setTimeout(() => {
-                        this.start();
-                    }, 1200);
+                    setTimeout(() => { this.start(); }, 1200);
                 },
                 start() {
                     document.getElementById('tour-overlay').style.display = 'block';
@@ -285,15 +276,10 @@
                     const config = this.steps[this.lang];
                     const step = config[this.currentStep];
                     const targetEl = document.getElementById(step.target);
-                    
                     if (!targetEl || targetEl.offsetHeight === 0) {
-                        if (this.currentStep < config.length - 1) {
-                            this.currentStep++;
-                            this.render();
-                        }
+                        if (this.currentStep < config.length - 1) { this.currentStep++; this.render(); }
                         return;
                     }
-
                     document.getElementById('tour-title').innerText = step.title;
                     document.getElementById('tour-desc').innerText = step.desc;
                     document.getElementById('tour-step-count').innerText = `${this.currentStep + 1} / ${config.length}`;
@@ -307,8 +293,6 @@
                     const rect = targetEl.getBoundingClientRect();
                     const spotlight = document.getElementById('tour-spotlight');
                     const popover = document.getElementById('tour-popover');
-                    
-                    // 考慮捲動位置計算聚光燈
                     spotlight.style.width = `${rect.width + 10}px`;
                     spotlight.style.height = `${rect.height + 10}px`;
                     spotlight.style.left = `${rect.left - 5}px`;
@@ -316,24 +300,18 @@
 
                     let popTop = rect.bottom + 15;
                     let popLeft = rect.left + (rect.width / 2) - 140;
-
                     if (popLeft < 20) popLeft = 20;
                     if (popLeft + 280 > window.innerWidth - 20) popLeft = window.innerWidth - 300;
                     if (popTop + 180 > window.innerHeight) popTop = rect.top - 180;
 
                     popover.style.left = `${popLeft}px`;
                     popover.style.top = `${popTop}px`;
-                    
                     targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 },
                 next() {
                     const config = this.steps[this.lang];
-                    if (this.currentStep < config.length - 1) {
-                        this.currentStep++;
-                        this.render();
-                    } else {
-                        this.finish();
-                    }
+                    if (this.currentStep < config.length - 1) { this.currentStep++; this.render(); } 
+                    else { this.finish(); }
                 },
                 finish() {
                     document.getElementById('tour-overlay').style.display = 'none';
@@ -342,7 +320,6 @@
                 }
             };
 
-            // --- 原有的所有細節設定 (保留) ---
             const BUILDING_NAMES_I18N = {
                 zh: {
                     "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 T 棟" },
@@ -418,7 +395,6 @@
                         document.getElementById('search-input').placeholder = dict.searchPlh;
                         document.getElementById('search-btn').textContent = dict.searchBtn;
                         langBtn.textContent = this.lang === 'zh' ? 'EN' : '中文';
-                        
                         this.renderFilters();
                         if (this.currentData.length > 0) this.sortAndRender();
                         Onboarding.lang = this.lang;
@@ -435,14 +411,12 @@
                     const channel = this.supabase.channel('online-users', {
                         config: { presence: { key: 'user-' + Math.random().toString(36).substr(2, 9) } }
                     });
-                    channel
-                        .on('presence', { event: 'sync' }, () => {
-                            const state = channel.presenceState();
-                            document.getElementById('online-count').textContent = Object.keys(state).length;
-                        })
-                        .subscribe(async (status) => {
-                            if (status === 'SUBSCRIBED') await channel.track({ online_at: new Date().toISOString() });
-                        });
+                    channel.on('presence', { event: 'sync' }, () => {
+                        const state = channel.presenceState();
+                        document.getElementById('online-count').textContent = Object.keys(state).length;
+                    }).subscribe(async (status) => {
+                        if (status === 'SUBSCRIBED') await channel.track({ online_at: new Date().toISOString() });
+                    });
                 },
 
                 async setupStats() {
@@ -477,7 +451,6 @@
                         document.getElementById('search-input').value = "";
                         window.location.href = window.location.pathname; 
                     };
-                    
                     const sortClick = (e) => {
                         const th = e.target.closest('th');
                         if (th) {
@@ -488,14 +461,11 @@
                     };
                     document.getElementById("table-head-row").onclick = sortClick;
                     document.getElementById("floating-thead").onclick = sortClick;
-                    
-                    //💡重啟導覽按鈕修正
                     document.getElementById('tour-restart').onclick = () => {
                         localStorage.removeItem('tcu_tour_done');
                         Onboarding.currentStep = 0;
                         Onboarding.start();
                     };
-
                     window.onscroll = () => {
                         const t = document.getElementById("space-table"), fc = document.getElementById("floating-header-container"), 
                               tr = t.getBoundingClientRect(), mc = document.getElementById("table-container"), 
@@ -525,19 +495,15 @@
                     const p = this.currentData.filter(r => String(r.sID) === this.highlightID);
                     const o = this.currentData.filter(r => String(r.sID) !== this.highlightID);
                     const colKeys = ['SpaceNo', 'SpaceName', 'CampusNo', 'BuildingNo', 'FloorNo', 'PicNo'];
-                    
                     o.sort((a, b) => String(a[this.sortCol] || "").localeCompare(String(b[this.sortCol] || ""), undefined, { numeric: true }) * this.sortDir);
                     this.currentData = [...p, ...o];
-                    
                     const dict = I18N_DICT[this.lang];
                     const h = colKeys.map(c => {
                         const activeClass = this.sortCol === c ? (this.sortDir === 1 ? 'active-asc' : 'active-desc') : '';
                         return `<th data-col="${c}" class="${activeClass}">${dict.colNames[c]}<span class="sort-indicator"><span class="sort-arrow arrow-up">▲</span><span class="sort-arrow arrow-down">▼</span></span></th>`;
                     }).join('');
-                    
                     document.getElementById("table-head-row").innerHTML = h;
                     document.getElementById("floating-thead").innerHTML = `<tr>${h}</tr>`;
-                    
                     let pinnedHTML = "";
                     const rows = this.currentData.map(row => {
                         const isP = String(row.sID) === this.highlightID;
@@ -558,7 +524,6 @@
                         if (isP) pinnedHTML = fullR;
                         return fullR;
                     }).join('');
-
                     document.getElementById("space-tbody").innerHTML = rows;
                     document.getElementById("floating-pinned-tbody").innerHTML = pinnedHTML;
                     document.getElementById('reset-btn').style.display = 'inline-block';
