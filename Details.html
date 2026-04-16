@@ -6,7 +6,7 @@
     <link rel="icon" href="TCUMAP/logo.png" type="image/png">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
-        /* --- 核心變數同步 (支援深色模式) --- */
+        /* --- 核心變數與深色模式 --- */
         :root {
             --tech-blue: #007bff;
             --neon-glow: rgba(0, 123, 255, 0.5);
@@ -29,6 +29,8 @@
             --header-text: #f7fafc;
             --border-color: #333;
             --img-container-bg: #000000;
+            --tech-blue: #ff8400; /* 配合你 index 的科技橘 */
+            --neon-glow: rgba(255, 132, 0, 0.6);
         }
 
         body { 
@@ -61,8 +63,8 @@
         
         #back-button { 
             padding: 10px 20px; font-size: 0.9rem; 
-            background: #1a202c; color: #00f2fe; 
-            border: 1px solid rgba(0, 242, 254, 0.3); border-radius: 8px; 
+            background: #1a202c; color: var(--tech-blue); 
+            border: 1px solid var(--neon-glow); border-radius: 8px; 
             text-decoration: none; font-weight: 600;
             transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;
         }
@@ -86,6 +88,7 @@
         .detail-label { font-weight: 700; font-size: 0.8rem; color: var(--text-second); text-transform: uppercase; }
         .detail-value { font-size: 1.1rem; color: var(--text-main); }
 
+        /* --- 圖片與標記點區域 --- */
         #image-container { 
             text-align: center; margin-top: 30px; min-height: 300px; 
             background-color: var(--img-container-bg); 
@@ -95,22 +98,43 @@
             border: 2px solid var(--border-color);
         }
 
-        #image-container::after {
-            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-            background: rgba(0, 242, 254, 0.2);
-            animation: scan 3s linear infinite;
-	    z-index: 0;
+        #image-zoom-wrapper { 
+            position: relative; /* 必須為 relative 讓標記點定位 */
+            cursor: zoom-in; width: 100%; display: inline-block;
         }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
 
-        #image-zoom-wrapper { position: relative; z-index: 1; cursor: zoom-in; width: 100%; padding: 10px; box-sizing: border-box; }
         #space-image { 
             max-width: 100%; height: auto; display: block; margin: 0 auto;
             border-radius: 4px; transition: transform 0.3s;
-            filter: drop-shadow(0 0 10px rgba(0, 242, 254, 0.3));
         }
 
-        #img-status { color: var(--text-second); font-size: 0.9rem; }
+        /* 標記紅點樣式 */
+        .map-marker {
+            position: absolute;
+            width: 18px; height: 18px;
+            background-color: #ff3e3e;
+            border: 2px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(255, 62, 62, 0.9);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* 紅點閃爍動畫 */
+        .map-marker::after {
+            content: "";
+            position: absolute; top: -2px; left: -2px;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            border: 2px solid #ff3e3e;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
 
         .fullscreen-overlay { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
@@ -153,7 +177,7 @@
 
             <div id="image-container">
                 <div id="image-zoom-wrapper">
-                    <span id="img-status">Initializing Scanner...</span>
+                    <span id="img-status" style="color:var(--text-second)">Initializing Scanner...</span>
                 </div>
             </div>
         </div>
@@ -162,8 +186,8 @@
     <script src="./config.js"></script> 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
     <script>
-        // --- 語言與深色模式初始化 ---
         const currentLang = localStorage.getItem('lang') || 'zh';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         function applyTheme() {
             if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
@@ -172,13 +196,9 @@
 
         const I18N_DETAILS = {
             zh: {
-                back: "返回列表",
-                campus: "Campus 校區",
-                spaceNo: "Space ID 編號",
-                spaceName: "Space Name 名稱",
-                location: "Location 樓棟/樓層",
-                noMap: "無平面圖數據",
-                mapNotFound: "找不到地圖檔案",
+                back: "返回列表", campus: "Campus 校區", spaceNo: "Space ID 編號",
+                spaceName: "Space Name 名稱", location: "Location 樓棟/樓層",
+                noMap: "無平面圖數據", mapNotFound: "找不到地圖檔案",
                 campusMap: { '1': '中央校區', '2': '介仁校區', '3': '建國校區' },
                 bldNames: {
                     "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 T 棟" },
@@ -187,13 +207,9 @@
                 floorUnit: " 樓", bldUnit: " 棟"
             },
             en: {
-                back: "BACK TO LIST",
-                campus: "Campus",
-                spaceNo: "Space ID",
-                spaceName: "Space Name",
-                location: "Location",
-                noMap: "NO MAP DATA",
-                mapNotFound: "MAP NOT FOUND",
+                back: "BACK TO LIST", campus: "Campus", spaceNo: "Space ID",
+                spaceName: "Space Name", location: "Location",
+                noMap: "NO MAP DATA", mapNotFound: "MAP NOT FOUND",
                 campusMap: { '1': 'Main Campus', '2': 'Jieren Campus', '3': 'Jianguo Campus' },
                 bldNames: {
                     "1": { "A": "Hejing Bldg A", "B": "Hejing Bldg B", "C": "Hejing Bldg C", "D": "Qingeng Bldg D", "E": "Qingeng Bldg E", "F": "Dashe Bldg F", "H": "Futian Bldg H", "L": "Daai Bldg L", "T": "Daxi Bldg T" },
@@ -226,6 +242,7 @@
             });
         }
 
+        // --- 核心：顯示圖片並抓取座標 ---
         async function loadAndDisplayImage(picNo, spaceName) {
             const wrap = document.getElementById("image-zoom-wrapper");
             if (!picNo || picNo === "null") { wrap.innerHTML = `<span style='color:var(--text-second)'>${dict.noMap}</span>`; return; }
@@ -237,34 +254,56 @@
                 valid = await tryLoadImage(`TCUMAP/${picNo}.${ext}`);
                 if (valid) break;
             }
-            if (!valid && spaceName) {
-                for (const ext of exts) {
-                    valid = await tryLoadImage(`TCUMAP/${spaceName}.${ext}`);
-                    if (valid) break;
-                }
-            }
 
             if (valid) {
                 const img = new Image(); img.id = "space-image"; img.src = valid;
                 img.onload = () => { 
-                    wrap.innerHTML = ""; wrap.appendChild(img); 
+                    wrap.innerHTML = ""; 
+                    wrap.appendChild(img); 
                     enableImageZoom(img); 
+                    // 圖片顯示後，去抓紅點座標
+                    fetchAndDrawMarker(spaceName);
                 };
             } else { wrap.innerHTML = `<span style='color:#e53e3e'>${dict.mapNotFound}</span>`; }
+        }
+
+        // --- 新增：從 Supabase 抓取座標 ---
+        async function fetchAndDrawMarker(targetName) {
+            const { data, error } = await supabaseClient
+                .from('classroom_markers')
+                .select('*')
+                .eq('classroom_name', targetName)
+                .maybeSingle();
+
+            if (data) {
+                const wrap = document.getElementById("image-zoom-wrapper");
+                const marker = document.createElement('div');
+                marker.className = 'map-marker';
+                
+                // 使用百分比定位，確保響應式圖片也能對準
+                marker.style.left = data.x_percent + '%';
+                marker.style.top = data.y_percent + '%';
+                
+                // 如果是橘色科技模式，微調顏色
+                if(document.body.classList.contains('dark-mode')) {
+                    marker.style.backgroundColor = "var(--tech-blue)";
+                    marker.style.borderColor = "#fff";
+                }
+
+                wrap.appendChild(marker);
+            }
         }
 
         function renderDetails(data) {
             const kw = getParam('keyword') || "", sID = getParam('sID') || "";
             document.getElementById("back-button").href = `index.html?keyword=${encodeURIComponent(kw)}&highlightID=${encodeURIComponent(sID)}`;
             
-            // 更新靜態標籤文字
             document.getElementById("ui-back-text").textContent = dict.back;
             document.getElementById("lbl-campus").textContent = dict.campus;
             document.getElementById("lbl-space-no").textContent = dict.spaceNo;
             document.getElementById("lbl-space-name").textContent = dict.spaceName;
             document.getElementById("lbl-location").textContent = dict.location;
 
-            // 更新資料內容
             document.getElementById("detail-title").textContent = (data.SpaceName || "SPACE DETAIL").toUpperCase();
             document.getElementById("space-name").textContent = data.SpaceName;
             document.getElementById("campus-name").textContent = dict.campusMap[data.CampusNo] || data.CampusNo;
@@ -284,8 +323,7 @@
         async function load() {
             const sID = getParam('sID');
             if (!sID) return;
-            const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            const { data } = await client.from("TblSpace").select("*").eq("sID", sID).maybeSingle();
+            const { data } = await supabaseClient.from("TblSpace").select("*").eq("sID", sID).maybeSingle();
             if (data) renderDetails(data);
         }
         window.onload = load;
