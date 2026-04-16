@@ -108,31 +108,48 @@
             border-radius: 4px; transition: transform 0.3s;
         }
 
-        /* 標記點樣式 */
+        /* --- 紅點標記：改小且半透明 --- */
         .map-marker {
             position: absolute;
-            width: 18px; height: 18px;
-            background-color: #ff3e3e;
-            border: 2px solid white;
+            width: 12px; height: 12px; /* 縮小尺寸 */
+            background-color: rgba(255, 62, 62, 0.6); /* 半透明紅 */
+            border: 1.5px solid rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 15px rgba(255, 62, 62, 0.9);
+            box-shadow: 0 0 10px rgba(255, 62, 62, 0.5);
             z-index: 10;
             pointer-events: none;
         }
 
+        /* 閃爍動畫也跟著變小 */
         .map-marker::after {
             content: "";
-            position: absolute; top: -2px; left: -2px;
-            width: 18px; height: 18px;
+            position: absolute; top: -1.5px; left: -1.5px;
+            width: 12px; height: 12px;
             border-radius: 50%;
-            border: 2px solid #ff3e3e;
+            border: 1.5px solid rgba(255, 62, 62, 0.8);
             animation: pulse 1.5s infinite;
         }
 
         @keyframes pulse {
             0% { transform: scale(1); opacity: 1; }
             100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        /* --- 文字標籤樣式 --- */
+        .marker-label {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.7); /* 深色背景 */
+            color: #ffffff;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            transform: translate(-50%, -180%); /* 定位於點點正上方 */
+            z-index: 11;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            pointer-events: none;
         }
 
         .fullscreen-overlay { 
@@ -241,7 +258,6 @@
             });
         }
 
-        // --- 核心：顯示圖片並抓取標記 ---
         async function loadAndDisplayImage(picNo, spaceID) {
             const wrap = document.getElementById("image-zoom-wrapper");
             if (!picNo || picNo === "null") { wrap.innerHTML = `<span style='color:var(--text-second)'>${dict.noMap}</span>`; return; }
@@ -260,39 +276,37 @@
                     wrap.innerHTML = ""; 
                     wrap.appendChild(img); 
                     enableImageZoom(img); 
-                    // 不論圖片名稱，只用 SpaceNo (spaceID) 去抓紅點
                     fetchAndDrawMarker(spaceID);
                 };
             } else { wrap.innerHTML = `<span style='color:#e53e3e'>${dict.mapNotFound}</span>`; }
         }
 
-        // --- 修正後的標記抓取：僅比對編號 (SpaceNo) ---
+        // --- 修正後的標記抓取：加入文字標籤 ---
         async function fetchAndDrawMarker(targetSpaceNo) {
-            console.log("正在搜尋空間標記編號：", targetSpaceNo);
-
             const { data, error } = await supabaseClient
                 .from('classroom_markers')
                 .select('*')
-                .eq('classroom_name', targetSpaceNo) // 僅比對空間編號
+                .eq('classroom_name', targetSpaceNo)
                 .maybeSingle();
 
             if (data) {
                 const wrap = document.getElementById("image-zoom-wrapper");
+                
+                // 1. 建立點點
                 const marker = document.createElement('div');
                 marker.className = 'map-marker';
-                
                 marker.style.left = data.x_percent + '%';
                 marker.style.top = data.y_percent + '%';
                 
-                if(document.body.classList.contains('dark-mode')) {
-                    marker.style.backgroundColor = "var(--tech-blue)";
-                    marker.style.borderColor = "#fff";
-                }
+                // 2. 建立文字標籤
+                const label = document.createElement('div');
+                label.className = 'marker-label';
+                label.style.left = data.x_percent + '%';
+                label.style.top = data.y_percent + '%';
+                label.innerText = targetSpaceNo; // 顯示編號 (如 C101)
 
                 wrap.appendChild(marker);
-                console.log("✅ 標記點顯示成功！");
-            } else {
-                console.log("ℹ️ 此空間編號尚未設定標記座標。");
+                wrap.appendChild(label);
             }
         }
 
@@ -320,7 +334,6 @@
             let pic = String(data.PicNo || "");
             if (pic.includes("E+") || pic.includes(".")) pic = data.SpaceName;
             
-            // 執行圖片載入並傳入編號
             loadAndDisplayImage(pic, data.SpaceNo);
         }
 
