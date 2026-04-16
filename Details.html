@@ -29,7 +29,7 @@
             --header-text: #f7fafc;
             --border-color: #333;
             --img-container-bg: #000000;
-            --tech-blue: #ff8400; /* 配合你 index 的科技橘 */
+            --tech-blue: #ff8400; 
             --neon-glow: rgba(255, 132, 0, 0.6);
         }
 
@@ -88,7 +88,6 @@
         .detail-label { font-weight: 700; font-size: 0.8rem; color: var(--text-second); text-transform: uppercase; }
         .detail-value { font-size: 1.1rem; color: var(--text-main); }
 
-        /* --- 圖片與標記點區域 --- */
         #image-container { 
             text-align: center; margin-top: 30px; min-height: 300px; 
             background-color: var(--img-container-bg); 
@@ -99,7 +98,7 @@
         }
 
         #image-zoom-wrapper { 
-            position: relative; /* 必須為 relative 讓標記點定位 */
+            position: relative; 
             cursor: zoom-in; width: 100%; display: inline-block;
         }
 
@@ -108,7 +107,6 @@
             border-radius: 4px; transition: transform 0.3s;
         }
 
-        /* 標記紅點樣式 */
         .map-marker {
             position: absolute;
             width: 18px; height: 18px;
@@ -121,7 +119,6 @@
             pointer-events: none;
         }
 
-        /* 紅點閃爍動畫 */
         .map-marker::after {
             content: "";
             position: absolute; top: -2px; left: -2px;
@@ -242,8 +239,8 @@
             });
         }
 
-        // --- 核心：顯示圖片並抓取座標 ---
-        async function loadAndDisplayImage(picNo, spaceName) {
+        // --- 核心：顯示圖片並傳入 SpaceNo 抓取座標 ---
+        async function loadAndDisplayImage(picNo, spaceID) {
             const wrap = document.getElementById("image-zoom-wrapper");
             if (!picNo || picNo === "null") { wrap.innerHTML = `<span style='color:var(--text-second)'>${dict.noMap}</span>`; return; }
             
@@ -261,18 +258,18 @@
                     wrap.innerHTML = ""; 
                     wrap.appendChild(img); 
                     enableImageZoom(img); 
-                    // 圖片顯示後，去抓紅點座標
-                    fetchAndDrawMarker(spaceName);
+                    // 改用 SpaceNo (spaceID) 去抓紅點
+                    fetchAndDrawMarker(spaceID);
                 };
             } else { wrap.innerHTML = `<span style='color:#e53e3e'>${dict.mapNotFound}</span>`; }
         }
 
-        // --- 新增：從 Supabase 抓取座標 ---
-        async function fetchAndDrawMarker(targetName) {
+        // --- 從 Supabase 抓取座標 (使用 SpaceNo 比對 classroom_name) ---
+        async function fetchAndDrawMarker(targetID) {
             const { data, error } = await supabaseClient
                 .from('classroom_markers')
                 .select('*')
-                .eq('classroom_name', targetName)
+                .eq('classroom_name', targetID) // 這裡的 targetID 就是 SpaceNo (例如 C101)
                 .maybeSingle();
 
             if (data) {
@@ -280,11 +277,9 @@
                 const marker = document.createElement('div');
                 marker.className = 'map-marker';
                 
-                // 使用百分比定位，確保響應式圖片也能對準
                 marker.style.left = data.x_percent + '%';
                 marker.style.top = data.y_percent + '%';
                 
-                // 如果是橘色科技模式，微調顏色
                 if(document.body.classList.contains('dark-mode')) {
                     marker.style.backgroundColor = "var(--tech-blue)";
                     marker.style.borderColor = "#fff";
@@ -317,7 +312,9 @@
 
             let pic = String(data.PicNo || "");
             if (pic.includes("E+") || pic.includes(".")) pic = data.SpaceName;
-            loadAndDisplayImage(pic, data.SpaceName);
+            
+            // 重要修改：將 data.SpaceNo 傳入
+            loadAndDisplayImage(pic, data.SpaceNo);
         }
 
         async function load() {
