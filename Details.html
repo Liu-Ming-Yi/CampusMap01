@@ -88,6 +88,7 @@
         .detail-label { font-weight: 700; font-size: 0.8rem; color: var(--text-second); text-transform: uppercase; }
         .detail-value { font-size: 1.1rem; color: var(--text-main); }
 
+        /* --- 圖片與標記點區域 --- */
         #image-container { 
             text-align: center; margin-top: 30px; min-height: 300px; 
             background-color: var(--img-container-bg); 
@@ -107,6 +108,7 @@
             border-radius: 4px; transition: transform 0.3s;
         }
 
+        /* 標記點樣式 */
         .map-marker {
             position: absolute;
             width: 18px; height: 18px;
@@ -239,7 +241,7 @@
             });
         }
 
-        // --- 核心：顯示圖片並傳入 SpaceNo 抓取座標 ---
+        // --- 核心：顯示圖片並抓取標記 ---
         async function loadAndDisplayImage(picNo, spaceID) {
             const wrap = document.getElementById("image-zoom-wrapper");
             if (!picNo || picNo === "null") { wrap.innerHTML = `<span style='color:var(--text-second)'>${dict.noMap}</span>`; return; }
@@ -258,18 +260,20 @@
                     wrap.innerHTML = ""; 
                     wrap.appendChild(img); 
                     enableImageZoom(img); 
-                    // 改用 SpaceNo (spaceID) 去抓紅點
+                    // 不論圖片名稱，只用 SpaceNo (spaceID) 去抓紅點
                     fetchAndDrawMarker(spaceID);
                 };
             } else { wrap.innerHTML = `<span style='color:#e53e3e'>${dict.mapNotFound}</span>`; }
         }
 
-        // --- 從 Supabase 抓取座標 (使用 SpaceNo 比對 classroom_name) ---
-        async function fetchAndDrawMarker(targetID) {
+        // --- 修正後的標記抓取：僅比對編號 (SpaceNo) ---
+        async function fetchAndDrawMarker(targetSpaceNo) {
+            console.log("正在搜尋空間標記編號：", targetSpaceNo);
+
             const { data, error } = await supabaseClient
                 .from('classroom_markers')
                 .select('*')
-                .eq('classroom_name', targetID) // 這裡的 targetID 就是 SpaceNo (例如 C101)
+                .eq('classroom_name', targetSpaceNo) // 僅比對空間編號
                 .maybeSingle();
 
             if (data) {
@@ -286,6 +290,9 @@
                 }
 
                 wrap.appendChild(marker);
+                console.log("✅ 標記點顯示成功！");
+            } else {
+                console.log("ℹ️ 此空間編號尚未設定標記座標。");
             }
         }
 
@@ -313,7 +320,7 @@
             let pic = String(data.PicNo || "");
             if (pic.includes("E+") || pic.includes(".")) pic = data.SpaceName;
             
-            // 重要修改：將 data.SpaceNo 傳入
+            // 執行圖片載入並傳入編號
             loadAndDisplayImage(pic, data.SpaceNo);
         }
 
