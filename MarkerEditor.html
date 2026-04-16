@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>地圖座標標註工具</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
+        .editor-container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 12px; }
+        #image-wrapper { 
+            position: relative; display: inline-block; 
+            margin-top: 20px; border: 2px solid #ccc; cursor: crosshair; 
+        }
+        #target-img { max-width: 100%; display: block; }
+        .marker {
+            position: absolute; width: 12px; height: 12px; background: red;
+            border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);
+        }
+        .marker-label {
+            position: absolute; background: rgba(0,0,0,0.7); color: white;
+            padding: 2px 6px; font-size: 12px; border-radius: 4px;
+            transform: translate(10px, -20px); white-space: nowrap;
+        }
+        input { padding: 8px; width: 300px; }
+        button { padding: 8px 15px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="editor-container">
+        <h2>📍 圖片座標標註工具</h2>
+        <input type="text" id="imgUrl" placeholder="貼上 Github 圖片網址 (例如: https://.../A01.png)">
+        <button onclick="loadImage()">載入圖片</button>
+        <p>操作說明：載入後，直接點擊圖片位置即可新增標記並儲存至 Supabase。</p>
+        
+        <div id="image-wrapper">
+            <img id="target-img" src="">
+        </div>
+    </div>
+
+    <script src="./config.js"></script>
+    <script>
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const wrapper = document.getElementById('image-wrapper');
+        const img = document.getElementById('target-img');
+
+        function loadImage() {
+            const url = document.getElementById('imgUrl').value;
+            if (!url) return;
+            img.src = url;
+            wrapper.querySelectorAll('.marker, .marker-label').forEach(el => el.remove());
+        }
+
+        // 點擊圖片計算座標
+        img.addEventListener('click', async (e) => {
+            const rect = img.getBoundingClientRect();
+            // 計算百分比座標 (這樣圖片縮放時位置才不會跑掉)
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+            const name = prompt("請輸入此處的教室/空間名稱：");
+            if (!name) return;
+
+            // 取得圖片檔名作為 image_name (不含路徑)
+            const imgPath = document.getElementById('imgUrl').value;
+            const fileName = imgPath.split('/').pop().split('.')[0]; 
+
+            // 儲存到 Supabase
+            const { error } = await client.from('classroom_markers').insert([
+                { image_name: fileName, classroom_name: name, x_percent: x, y_percent: y }
+            ]);
+
+            if (error) {
+                alert("儲存失敗: " + error.message);
+            } else {
+                addMarkerToUI(x, y, name);
+                alert("儲存成功！");
+            }
+        });
+
+        function addMarkerToUI(x, y, name) {
+            const dot = document.createElement('div');
+            dot.className = 'marker';
+            dot.style.left = x + '%';
+            dot.style.top = y + '%';
+            
+            const label = document.createElement('div');
+            label.className = 'marker-label';
+            label.style.left = x + '%';
+            label.style.top = y + '%';
+            label.innerText = name;
+
+            wrapper.appendChild(dot);
+            wrapper.appendChild(label);
+        }
+    </script>
+</body>
+</html>
