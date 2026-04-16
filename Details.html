@@ -88,7 +88,7 @@
         .detail-label { font-weight: 700; font-size: 0.8rem; color: var(--text-second); text-transform: uppercase; }
         .detail-value { font-size: 1.1rem; color: var(--text-main); }
 
-        /* --- 圖片與標記點區域 --- */
+        /* --- 圖片容器 --- */
         #image-container { 
             text-align: center; margin-top: 30px; min-height: 300px; 
             background-color: var(--img-container-bg); 
@@ -98,6 +98,7 @@
             border: 2px solid var(--border-color);
         }
 
+        /* 縮放包裝層 */
         #image-zoom-wrapper { 
             position: relative; 
             cursor: zoom-in; width: 100%; display: inline-block;
@@ -108,20 +109,19 @@
             border-radius: 4px; transition: transform 0.3s;
         }
 
-        /* --- 紅點標記：改小且半透明 --- */
+        /* --- 標記點樣式 --- */
         .map-marker {
             position: absolute;
-            width: 12px; height: 12px; /* 縮小尺寸 */
-            background-color: rgba(255, 62, 62, 0.6); /* 半透明紅 */
-            border: 1.5px solid rgba(255, 255, 255, 0.8);
+            width: 12px; height: 12px;
+            background-color: rgba(255, 62, 62, 0.7);
+            border: 1.5px solid white;
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px rgba(255, 62, 62, 0.5);
+            box-shadow: 0 0 10px rgba(255, 62, 62, 0.6);
             z-index: 10;
             pointer-events: none;
         }
 
-        /* 閃爍動畫也跟著變小 */
         .map-marker::after {
             content: "";
             position: absolute; top: -1.5px; left: -1.5px;
@@ -136,29 +136,41 @@
             100% { transform: scale(2.5); opacity: 0; }
         }
 
-        /* --- 文字標籤樣式 --- */
         .marker-label {
             position: absolute;
-            background-color: rgba(0, 0, 0, 0.7); /* 深色背景 */
+            background-color: rgba(0, 0, 0, 0.75);
             color: #ffffff;
             padding: 3px 8px;
             border-radius: 4px;
             font-size: 12px;
             font-weight: 600;
             white-space: nowrap;
-            transform: translate(-50%, -180%); /* 定位於點點正上方 */
+            transform: translate(-50%, -180%);
             z-index: 11;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             pointer-events: none;
         }
 
+        /* --- 全螢幕縮放層修復 --- */
         .fullscreen-overlay { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-            background: rgba(10, 14, 23, 0.95); z-index: 999; 
-            display: flex; justify-content: center; align-items: center; cursor: zoom-out; 
-            backdrop-filter: blur(5px);
+            background: rgba(0, 0, 0, 0.95); z-index: 9999; 
+            display: flex; justify-content: center; align-items: center; 
+            cursor: zoom-out; backdrop-filter: blur(8px);
         }
-        .zoomed-image { max-width: 95vw; max-height: 95vh; object-fit: contain; }
+
+        /* 放大後的內容容器：確保佔滿螢幕並維持比例 */
+        .zoomed-content { 
+            position: relative;
+            max-width: 95vw; 
+            max-height: 95vh; 
+            display: inline-block;
+        }
+        
+        .zoomed-content img {
+            max-width: 95vw; 
+            max-height: 95vh;
+            object-fit: contain;
+        }
     </style>
 </head>
 <body>
@@ -239,14 +251,35 @@
 
         function getParam(n) { return new URLSearchParams(window.location.search).get(n); }
 
-        function enableImageZoom(img) {
-            const o = document.createElement('div'); o.className = 'fullscreen-overlay';
-            img.onclick = () => {
-                document.body.appendChild(o);
-                const z = img.cloneNode(); z.className = 'zoomed-image';
-                o.innerHTML = ''; o.appendChild(z);
+        /**
+         * --- 修改後的縮放功能 ---
+         * 改為複製整個 wrapper (包含圖片、點點、標籤)
+         */
+        function enableImageZoom() {
+            const wrapper = document.getElementById('image-zoom-wrapper');
+            const overlay = document.createElement('div'); 
+            overlay.className = 'fullscreen-overlay';
+            
+            wrapper.onclick = () => {
+                document.body.appendChild(overlay);
+                
+                // 深度複製整個 wrapper (包含點點跟標籤)
+                const clonedContent = wrapper.cloneNode(true);
+                clonedContent.className = 'zoomed-content';
+                clonedContent.id = ''; // 移除重複 ID
+                
+                // 清空 overlay 並放入複製品
+                overlay.innerHTML = ''; 
+                overlay.appendChild(clonedContent);
+                
+                // 鎖定背景捲動
+                document.body.style.overflow = 'hidden';
             };
-            o.onclick = () => o.remove();
+            
+            overlay.onclick = () => {
+                overlay.remove();
+                document.body.style.overflow = '';
+            };
         }
 
         function tryLoadImage(url) {
@@ -271,17 +304,19 @@
             }
 
             if (valid) {
-                const img = new Image(); img.id = "space-image"; img.src = valid;
+                const img = new Image(); 
+                img.id = "space-image"; 
+                img.src = valid;
                 img.onload = () => { 
                     wrap.innerHTML = ""; 
                     wrap.appendChild(img); 
-                    enableImageZoom(img); 
+                    // 啟用縮放功能 (不再傳入參數，直接從全域找 wrapper)
+                    enableImageZoom(); 
                     fetchAndDrawMarker(spaceID);
                 };
             } else { wrap.innerHTML = `<span style='color:#e53e3e'>${dict.mapNotFound}</span>`; }
         }
 
-        // --- 修正後的標記抓取：加入文字標籤 ---
         async function fetchAndDrawMarker(targetSpaceNo) {
             const { data, error } = await supabaseClient
                 .from('classroom_markers')
@@ -292,18 +327,16 @@
             if (data) {
                 const wrap = document.getElementById("image-zoom-wrapper");
                 
-                // 1. 建立點點
                 const marker = document.createElement('div');
                 marker.className = 'map-marker';
                 marker.style.left = data.x_percent + '%';
                 marker.style.top = data.y_percent + '%';
                 
-                // 2. 建立文字標籤
                 const label = document.createElement('div');
                 label.className = 'marker-label';
                 label.style.left = data.x_percent + '%';
                 label.style.top = data.y_percent + '%';
-                label.innerText = targetSpaceNo; // 顯示編號 (如 C101)
+                label.innerText = targetSpaceNo;
 
                 wrap.appendChild(marker);
                 wrap.appendChild(label);
