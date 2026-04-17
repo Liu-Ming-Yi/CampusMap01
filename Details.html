@@ -98,7 +98,6 @@
             border: 2px solid var(--border-color);
         }
 
-        /* 縮放包裝層 */
         #image-zoom-wrapper { 
             position: relative; 
             cursor: zoom-in; width: 100%; display: inline-block;
@@ -109,15 +108,15 @@
             border-radius: 4px; transition: transform 0.3s;
         }
 
-        /* --- 標記點樣式 --- */
+        /* --- 紅點標記：更小且更透明 --- */
         .map-marker {
             position: absolute;
-            width: 12px; height: 12px;
-            background-color: rgba(255, 62, 62, 0.7);
-            border: 1.5px solid white;
+            width: 10px; height: 10px; /* 再次縮小 */
+            background-color: rgba(255, 62, 62, 0.6); /* 較高的透明度 */
+            border: 1.5px solid rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 0 10px rgba(255, 62, 62, 0.6);
+            box-shadow: 0 0 8px rgba(255, 62, 62, 0.5);
             z-index: 10;
             pointer-events: none;
         }
@@ -125,32 +124,34 @@
         .map-marker::after {
             content: "";
             position: absolute; top: -1.5px; left: -1.5px;
-            width: 12px; height: 12px;
+            width: 10px; height: 10px;
             border-radius: 50%;
-            border: 1.5px solid rgba(255, 62, 62, 0.8);
-            animation: pulse 1.5s infinite;
+            border: 1.2px solid rgba(255, 62, 62, 0.6);
+            animation: pulse 1.8s infinite;
         }
 
         @keyframes pulse {
             0% { transform: scale(1); opacity: 1; }
-            100% { transform: scale(2.5); opacity: 0; }
+            100% { transform: scale(3); opacity: 0; }
         }
 
+        /* --- 文字標籤樣式 --- */
         .marker-label {
             position: absolute;
-            background-color: rgba(0, 0, 0, 0.75);
+            background-color: rgba(0, 0, 0, 0.7);
             color: #ffffff;
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             white-space: nowrap;
             transform: translate(-50%, -180%);
             z-index: 11;
             pointer-events: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
-        /* --- 全螢幕縮放層修復 --- */
+        /* --- 全螢幕縮放層 --- */
         .fullscreen-overlay { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             background: rgba(0, 0, 0, 0.95); z-index: 9999; 
@@ -158,7 +159,6 @@
             cursor: zoom-out; backdrop-filter: blur(8px);
         }
 
-        /* 放大後的內容容器：確保佔滿螢幕並維持比例 */
         .zoomed-content { 
             position: relative;
             max-width: 95vw; 
@@ -251,10 +251,6 @@
 
         function getParam(n) { return new URLSearchParams(window.location.search).get(n); }
 
-        /**
-         * --- 修改後的縮放功能 ---
-         * 改為複製整個 wrapper (包含圖片、點點、標籤)
-         */
         function enableImageZoom() {
             const wrapper = document.getElementById('image-zoom-wrapper');
             const overlay = document.createElement('div'); 
@@ -262,17 +258,11 @@
             
             wrapper.onclick = () => {
                 document.body.appendChild(overlay);
-                
-                // 深度複製整個 wrapper (包含點點跟標籤)
                 const clonedContent = wrapper.cloneNode(true);
                 clonedContent.className = 'zoomed-content';
-                clonedContent.id = ''; // 移除重複 ID
-                
-                // 清空 overlay 並放入複製品
+                clonedContent.id = ''; 
                 overlay.innerHTML = ''; 
                 overlay.appendChild(clonedContent);
-                
-                // 鎖定背景捲動
                 document.body.style.overflow = 'hidden';
             };
             
@@ -291,7 +281,8 @@
             });
         }
 
-        async function loadAndDisplayImage(picNo, spaceID) {
+        // --- 重要：增加 campusNo 參數 ---
+        async function loadAndDisplayImage(picNo, spaceNo, campusNo) {
             const wrap = document.getElementById("image-zoom-wrapper");
             if (!picNo || picNo === "null") { wrap.innerHTML = `<span style='color:var(--text-second)'>${dict.noMap}</span>`; return; }
             
@@ -310,18 +301,20 @@
                 img.onload = () => { 
                     wrap.innerHTML = ""; 
                     wrap.appendChild(img); 
-                    // 啟用縮放功能 (不再傳入參數，直接從全域找 wrapper)
                     enableImageZoom(); 
-                    fetchAndDrawMarker(spaceID);
+                    // 傳遞編號與校區編號進行查詢
+                    fetchAndDrawMarker(spaceNo, campusNo);
                 };
             } else { wrap.innerHTML = `<span style='color:#e53e3e'>${dict.mapNotFound}</span>`; }
         }
 
-        async function fetchAndDrawMarker(targetSpaceNo) {
+        // --- 精準查詢：同時比對 SpaceNo 與 CampusNo ---
+        async function fetchAndDrawMarker(targetSpaceNo, targetCampusNo) {
             const { data, error } = await supabaseClient
                 .from('classroom_markers')
                 .select('*')
-                .eq('classroom_name', targetSpaceNo)
+                .eq('classroom_name', targetSpaceNo) // 教室編號
+                .eq('campus_no', String(targetCampusNo)) // 校區編號 (轉為字串確保匹配)
                 .maybeSingle();
 
             if (data) {
@@ -367,7 +360,8 @@
             let pic = String(data.PicNo || "");
             if (pic.includes("E+") || pic.includes(".")) pic = data.SpaceName;
             
-            loadAndDisplayImage(pic, data.SpaceNo);
+            // 傳入 PicNo, SpaceNo, CampusNo 三個核心參數
+            loadAndDisplayImage(pic, data.SpaceNo, data.CampusNo);
         }
 
         async function load() {
