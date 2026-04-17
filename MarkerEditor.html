@@ -2,96 +2,214 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>地圖座標標註工具</title>
+    <title>📍 地圖標註工具</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; }
-        .editor-container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 12px; }
+        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f0f2f5; }
+        .editor-container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .controls { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        
         #image-wrapper { 
-            position: relative; display: inline-block; 
-            margin-top: 20px; border: 2px solid #ccc; cursor: crosshair; 
+            position: relative; 
+            display: inline-block; 
+            border: 2px solid #ccc; 
+            background: #eee; 
+            cursor: crosshair;
         }
-        #target-img { max-width: 100%; display: block; }
-        .marker {
-            position: absolute; width: 12px; height: 12px; background: red;
-            border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%);
+        #target-img { max-width: 100%; display: block; user-select: none; -webkit-user-drag: none; }
+
+        /* 標記點樣式 */
+        .marker { 
+            position: absolute; 
+            width: 14px; height: 14px; 
+            background: #ff4757; 
+            border: 2px solid white; 
+            border-radius: 50%; 
+            transform: translate(-50%, -50%); 
+            cursor: pointer;
+            transition: transform 0.2s;
+            z-index: 10;
         }
-        .marker-label {
-            position: absolute; background: rgba(0,0,0,0.7); color: white;
-            padding: 2px 6px; font-size: 12px; border-radius: 4px;
-            transform: translate(10px, -20px); white-space: nowrap;
+        .marker:hover { transform: translate(-50%, -50%) scale(1.3); background: #ff7f50; }
+
+        .marker-label { 
+            position: absolute; 
+            background: rgba(0,0,0,0.8); 
+            color: white; 
+            padding: 3px 8px; 
+            font-size: 11px; 
+            border-radius: 4px; 
+            transform: translate(12px, -50%); 
+            white-space: nowrap; 
+            pointer-events: none;
+            z-index: 11;
         }
-        input { padding: 8px; width: 300px; }
-        button { padding: 8px 15px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 6px; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        
+        .tip { font-size: 0.85rem; color: #666; margin-bottom: 10px; }
+        .tip b { color: #007bff; }
     </style>
 </head>
 <body>
-    <div class="editor-container">
-        <h2>📍 圖片座標標註工具</h2>
-        <input type="text" id="imgUrl" placeholder="貼上 Github 圖片網址 (例如: https://.../A01.png)">
-        <button onclick="loadImage()">載入圖片</button>
-        <p>操作說明：載入後，直接點擊圖片位置即可新增標記並儲存至 Supabase。</p>
-        
-        <div id="image-wrapper">
-            <img id="target-img" src="">
-        </div>
+
+<div class="editor-container">
+    <h2>📍 校園空間標註工具 (Pro 版)</h2>
+    
+    <div class="controls">
+        <select id="campusNo">
+            <option value="1">1 - 中央校區</option>
+            <option value="2">2 - 介仁校區</option>
+            <option value="3">3 - 建國校區</option>
+        </select>
+        <input type="text" id="imgUrl" placeholder="貼上 Github 圖片網址" style="width: 400px;">
+        <button onclick="loadImage()">載入地圖並讀取標記</button>
     </div>
 
-    <script src="./config.js"></script>
-    <script>
-        const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        const wrapper = document.getElementById('image-wrapper');
-        const img = document.getElementById('target-img');
+    <div class="tip">
+        💡 操作指南：<b>左鍵點擊圖片</b> 新增標記 | <b>右鍵點擊點點</b> 刪除或修改名稱
+    </div>
+    
+    <div id="image-wrapper">
+        <img id="target-img" src="" alt="請先載入地圖">
+    </div>
+</div>
 
-        function loadImage() {
-            const url = document.getElementById('imgUrl').value;
-            if (!url) return;
-            img.src = url;
-            wrapper.querySelectorAll('.marker, .marker-label').forEach(el => el.remove());
-        }
+<script src="./config.js"></script>
+<script>
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const wrapper = document.getElementById('image-wrapper');
+    const img = document.getElementById('target-img');
 
-        // 點擊圖片計算座標
-        img.addEventListener('click', async (e) => {
-            const rect = img.getBoundingClientRect();
-            // 計算百分比座標 (這樣圖片縮放時位置才不會跑掉)
-            const x = ((e.clientX - rect.left) / rect.width) * 100;
-            const y = ((e.clientY - rect.top) / rect.height) * 100;
+    // 1. 載入地圖與現有標記
+    async function loadImage() {
+        const url = document.getElementById('imgUrl').value.trim();
+        if (!url) return alert("請輸入網址");
 
-            const name = prompt("請輸入此處的教室/空間名稱：");
-            if (!name) return;
-
-            // 取得圖片檔名作為 image_name (不含路徑)
-            const imgPath = document.getElementById('imgUrl').value;
-            const fileName = imgPath.split('/').pop().split('.')[0]; 
-
-            // 儲存到 Supabase
-            const { error } = await client.from('classroom_markers').insert([
-                { image_name: fileName, classroom_name: name, x_percent: x, y_percent: y }
-            ]);
-
-            if (error) {
-                alert("儲存失敗: " + error.message);
-            } else {
-                addMarkerToUI(x, y, name);
-                alert("儲存成功！");
-            }
-        });
-
-        function addMarkerToUI(x, y, name) {
-            const dot = document.createElement('div');
-            dot.className = 'marker';
-            dot.style.left = x + '%';
-            dot.style.top = y + '%';
+        img.src = url;
+        
+        img.onload = async () => {
+            const fileName = url.split('/').pop().split('.')[0];
+            const campus = document.getElementById('campusNo').value;
             
-            const label = document.createElement('div');
-            label.className = 'marker-label';
-            label.style.left = x + '%';
-            label.style.top = y + '%';
-            label.innerText = name;
+            // 清除舊 UI
+            clearUI();
 
-            wrapper.appendChild(dot);
-            wrapper.appendChild(label);
+            // 從 Supabase 抓取該圖片現有的標記
+            const { data, error } = await client
+                .from('classroom_markers')
+                .select('*')
+                .eq('image_name', fileName)
+                .eq('campus_no', campus);
+
+            if (data) {
+                data.forEach(item => {
+                    addMarkerToUI(item.x_percent, item.y_percent, item.classroom_name, item.id);
+                });
+            }
+        };
+    }
+
+    function clearUI() {
+        wrapper.querySelectorAll('.marker, .marker-label').forEach(el => el.remove());
+    }
+
+    // 2. 左鍵點擊：新增
+    wrapper.addEventListener('click', async (e) => {
+        // 如果點到的是已經存在的 marker，就不執行新增
+        if (e.target.classList.contains('marker')) return;
+        if (!img.src || img.src === "") return;
+
+        const rect = img.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+        const name = prompt("請輸入教室編號 (SpaceNo):");
+        if (!name) return;
+
+        const campus = document.getElementById('campusNo').value;
+        const fileName = img.src.split('/').pop().split('.')[0];
+
+        const { data, error } = await client.from('classroom_markers').insert([
+            { 
+                image_name: fileName, 
+                classroom_name: name, 
+                campus_no: campus, 
+                x_percent: x, 
+                y_percent: y 
+            }
+        ]).select(); // 使用 select() 回傳剛產生的 ID
+
+        if (!error && data) {
+            addMarkerToUI(x, y, name, data[0].id);
+        } else {
+            alert("新增失敗: " + error.message);
         }
-    </script>
+    });
+
+    // 3. 右鍵點擊點點：刪除或修改
+    // 監聽 contextmenu 事件
+    wrapper.addEventListener('contextmenu', async (e) => {
+        if (!e.target.classList.contains('marker')) return;
+        
+        e.preventDefault(); // 阻擋預設右鍵選單
+        
+        const markerEl = e.target;
+        const markerId = markerEl.dataset.id;
+        const oldName = markerEl.dataset.name;
+
+        const action = confirm(`選中的空間是: ${oldName}\n\n[確定]：刪除標記\n[取消]：修改名稱 (請按否/取消後會彈出修改視窗)`);
+        
+        if (action) {
+            // 刪除邏輯
+            const { error } = await client.from('classroom_markers').delete().eq('id', markerId);
+            if (!error) {
+                // 移除 UI
+                const labelEl = wrapper.querySelector(`.label-${markerId}`);
+                markerEl.remove();
+                if (labelEl) labelEl.remove();
+                console.log("已刪除標記");
+            }
+        } else {
+            // 修改名稱邏輯
+            const newName = prompt("請輸入新的空間名稱/編號:", oldName);
+            if (newName && newName !== oldName) {
+                const { error } = await client
+                    .from('classroom_markers')
+                    .update({ classroom_name: newName })
+                    .eq('id', markerId);
+                
+                if (!error) {
+                    // 更新 UI
+                    const labelEl = wrapper.querySelector(`.label-${markerId}`);
+                    if (labelEl) labelEl.innerText = newName;
+                    markerEl.dataset.name = newName;
+                    alert("名稱已更新");
+                }
+            }
+        }
+    });
+
+    // 將標記畫在畫面上
+    function addMarkerToUI(x, y, name, id) {
+        const dot = document.createElement('div');
+        dot.className = 'marker';
+        dot.dataset.id = id; // 綁定資料庫 ID
+        dot.dataset.name = name;
+        dot.style.left = x + '%';
+        dot.style.top = y + '%';
+        
+        const label = document.createElement('div');
+        label.className = `marker-label label-${id}`;
+        label.style.left = x + '%';
+        label.style.top = y + '%';
+        label.innerText = name;
+
+        wrapper.appendChild(dot);
+        wrapper.appendChild(label);
+    }
+</script>
 </body>
 </html>
