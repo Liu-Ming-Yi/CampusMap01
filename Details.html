@@ -320,7 +320,7 @@
                     wrap.appendChild(img); 
                     enableImageZoom(); 
                     if (showMarkers) {
-                        // 呼叫新的三重判斷邏輯
+                        // 呼叫新的三重判斷邏輯，並傳入 CampusNo
                         fetchAndDrawMarker(globalData.SpaceNo, picName, globalData.CampusNo);
                     }
                 };
@@ -333,21 +333,11 @@
         async function fetchAndDrawMarker(targetSpaceNo, targetPicNo, targetCampusNo) {
             console.log(`[Debug] 正在查詢標記: 校區=${targetCampusNo}, 圖片=${targetPicNo}, 編號=${targetSpaceNo}`);
 
-            // 基礎查詢條件：比對 Space ID (classroom_name) 與 Campus 校區 (campus_no)
-            let query = supabaseClient
+            const { data, error } = await supabaseClient
                 .from('classroom_markers')
                 .select('*')
                 .eq('classroom_name', targetSpaceNo)
                 .eq('campus_no', String(targetCampusNo));
-
-            // 如果是建國校區 (3)，則額外加上圖片名稱 (image_name) 作為第三個條件
-            if (String(targetCampusNo) === '3') {
-                query = query.eq('image_name', targetPicNo);
-            }
-
-            const { data, error } = await query
-                .order('created_at', { ascending: false }) 
-                .limit(1);
 
             if (error) {
                 console.error("[Error] Supabase 查詢錯誤:", error);
@@ -355,7 +345,8 @@
             }
 
             if (data && data.length > 0) {
-                const m = data[0];
+                // 優先選 image_name 符合當前圖片的，找不到才用第一筆
+                const m = data.find(r => r.image_name === targetPicNo) || data[0];
                 const wrap = document.getElementById("image-zoom-wrapper");
                 
                 const dot = document.createElement('div');
