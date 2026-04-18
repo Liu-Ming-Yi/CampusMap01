@@ -320,7 +320,7 @@
                     wrap.appendChild(img); 
                     enableImageZoom(); 
                     if (showMarkers) {
-                        // 呼叫新的三重判斷邏輯，並傳入 CampusNo
+                        // 呼叫新的三重判斷邏輯
                         fetchAndDrawMarker(globalData.SpaceNo, picName, globalData.CampusNo);
                     }
                 };
@@ -333,14 +333,14 @@
         async function fetchAndDrawMarker(targetSpaceNo, targetPicNo, targetCampusNo) {
             console.log(`[Debug] 正在查詢標記: 校區=${targetCampusNo}, 圖片=${targetPicNo}, 編號=${targetSpaceNo}`);
 
-            // 預設查詢：比對 Space ID (classroom_name) 與 CampusNo (campus_no)
+            // 基礎查詢條件：比對 Space ID (classroom_name) 與 Campus 校區 (campus_no)
             let query = supabaseClient
                 .from('classroom_markers')
                 .select('*')
                 .eq('classroom_name', targetSpaceNo)
                 .eq('campus_no', String(targetCampusNo));
 
-            // 如果是建國校區 (3)，則額外增加圖片名稱比對
+            // 如果是建國校區 (3)，則額外加上圖片名稱 (image_name) 作為第三個條件
             if (String(targetCampusNo) === '3') {
                 query = query.eq('image_name', targetPicNo);
             }
