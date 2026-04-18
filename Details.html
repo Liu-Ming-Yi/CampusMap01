@@ -126,7 +126,7 @@
         .map-marker {
             position: absolute;
             width: 10px; height: 10px;
-            background-color: rgba(255, 62, 62, 0.65);
+            background-color: rgba(255, 62, 62, 0.7);
             border: 1.5px solid rgba(255, 255, 255, 0.9);
             border-radius: 50%;
             transform: translate(-50%, -50%);
@@ -235,8 +235,8 @@
         const currentLang = localStorage.getItem('lang') || 'zh';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
-        let globalData = null; // 儲存 Supabase 抓到的原始資料
-        let currentView = 'room'; // 'room' 或 'campus'
+        let globalData = null; // 儲存原始資料
+        let currentView = 'room'; // 視角狀態
 
         function applyTheme() {
             if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
@@ -252,7 +252,7 @@
                 bldNames: {
                     "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 T 棟" },
                     "2": { "A": "合心樓 2A 棟", "B": "文心樓 2B 棟", "C": "立心樓 2C 棟", "D": "知心樓 2D 棟", "E": "明心樓 2E 棟", "G": "體育館 2G 棟", "H": "活動中心 2H 棟" },
-                    "3": { "M": "建國 M 棟", "N": "建國 N 棟", "P": "建國 P 棟" } // 可依實際需求增減
+                    "3": { "M": "建國 M 棟", "N": "建國 N 棟", "P": "建國 P 棟" }
                 },
                 floorUnit: " 樓", bldUnit: " 棟"
             },
@@ -279,23 +279,20 @@
             if (!globalData) return;
             currentView = mode;
             
-            // UI 按鈕狀態
             document.getElementById('btn-room-view').classList.toggle('active', mode === 'room');
             document.getElementById('btn-campus-view').classList.toggle('active', mode === 'campus');
 
             if (mode === 'room') {
-                // 載入該教室所屬的地圖 (PicNo)
                 let pic = String(globalData.PicNo || "");
                 if (pic.includes("E+") || pic.includes(".")) pic = globalData.SpaceName;
-                loadAndDisplayImage(pic, true);
+                loadAndDisplayImage(pic, true); // 顯示標記
             } else {
-                // 載入校園總圖 (檔案應命名為 campus_1.png, campus_2.png, campus_3.png)
                 const campusPic = `campus_${globalData.CampusNo}`;
-                loadAndDisplayImage(campusPic, false);
+                loadAndDisplayImage(campusPic, false); // 不顯示標記
             }
         }
 
-        /** --- 圖片偵測與載入 (支援 PNG/JPG/JPEG/WEBP) --- **/
+        /** --- 圖片載入 (支援多副檔名) --- **/
         async function loadAndDisplayImage(picName, showMarkers) {
             const wrap = document.getElementById("image-zoom-wrapper");
             wrap.innerHTML = `<span style='color:var(--text-second)'>影像掃描中...</span>`;
@@ -323,7 +320,8 @@
                     wrap.appendChild(img); 
                     enableImageZoom(); 
                     if (showMarkers) {
-                        fetchAndDrawMarker(globalData.SpaceNo, globalData.CampusNo);
+                        // 呼叫新的三重判斷邏輯 (實際上此處 picName 即是 PicNo)
+                        fetchAndDrawMarker(globalData.SpaceNo, picName);
                     }
                 };
             } else { 
@@ -331,15 +329,15 @@
             }
         }
 
-        /** --- 標記抓取：多校區驗證 + 只抓最新一筆 --- **/
-        async function fetchAndDrawMarker(targetSpaceNo, targetCampusNo) {
-            console.log(`[Debug] 正在查詢: 校區 ${targetCampusNo}, 編號 ${targetSpaceNo}`);
+        /** --- 核心修改：使用 Space ID 與 PicNo 雙重比對 --- **/
+        async function fetchAndDrawMarker(targetSpaceNo, targetPicNo) {
+            console.log(`[Debug] 正在查詢標記: 圖片=${targetPicNo}, 編號=${targetSpaceNo}`);
 
             const { data, error } = await supabaseClient
                 .from('classroom_markers')
                 .select('*')
-                .eq('classroom_name', targetSpaceNo) 
-                .eq('campus_no', String(targetCampusNo)) 
+                .eq('classroom_name', targetSpaceNo) // 比對教室編號
+                .eq('image_name', targetPicNo)     // 比對圖片名稱 (PicNo)
                 .order('created_at', { ascending: false }) 
                 .limit(1);
 
@@ -349,7 +347,6 @@
             }
 
             if (data && data.length > 0) {
-                console.log("[Success] 找到標記資料:", data[0]);
                 const m = data[0];
                 const wrap = document.getElementById("image-zoom-wrapper");
                 
@@ -367,11 +364,11 @@
                 wrap.appendChild(dot);
                 wrap.appendChild(lbl);
             } else {
-                console.warn(`[Warn] 找不到校區 ${targetCampusNo} 的教室 ${targetSpaceNo}。請檢查資料庫標註。`);
+                console.warn(`[Warn] 找不到符合標記。條件: 圖片(${targetPicNo}) + 編號(${targetSpaceNo})`);
             }
         }
 
-        /** --- 縮放功能：複製整個 wrapper 以保留點點 --- **/
+        /** --- 縮放功能 --- **/
         function enableImageZoom() {
             const wrapper = document.getElementById('image-zoom-wrapper');
             const overlay = document.createElement('div'); 
@@ -398,14 +395,12 @@
             const kw = getParam('keyword') || "";
             if (!sID) return;
 
-            // 返回按鈕設定
             document.getElementById("back-button").href = `index.html?keyword=${encodeURIComponent(kw)}&highlightID=${encodeURIComponent(sID)}`;
 
             const { data } = await supabaseClient.from("TblSpace").select("*").eq("sID", sID).maybeSingle();
             if (data) {
                 globalData = data;
                 
-                // 填充資訊
                 document.getElementById("detail-title").textContent = data.SpaceName.toUpperCase();
                 document.getElementById("space-name").textContent = data.SpaceName;
                 document.getElementById("campus-name").textContent = dict.campusMap[data.CampusNo] || data.CampusNo;
@@ -417,7 +412,6 @@
                 const fName = data.FloorNo ? `${data.FloorNo}${dict.floorUnit}` : "";
                 document.getElementById("location-text").textContent = `${bName} / ${fName}`;
 
-                // 初始顯示教室視角
                 switchView('room');
             }
         }
