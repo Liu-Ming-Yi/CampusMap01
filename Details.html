@@ -126,7 +126,7 @@
         .map-marker {
             position: absolute;
             width: 10px; height: 10px;
-            background-color: rgba(255, 62, 62, 0.7);
+            background-color: rgba(255, 62, 62, 0.65);
             border: 1.5px solid rgba(255, 255, 255, 0.9);
             border-radius: 50%;
             transform: translate(-50%, -50%);
@@ -320,8 +320,8 @@
                     wrap.appendChild(img); 
                     enableImageZoom(); 
                     if (showMarkers) {
-                        // 呼叫新的三重判斷邏輯 (實際上此處 picName 即是 PicNo)
-                        fetchAndDrawMarker(globalData.SpaceNo, picName);
+                        // 呼叫新的三重判斷邏輯，並傳入 CampusNo
+                        fetchAndDrawMarker(globalData.SpaceNo, picName, globalData.CampusNo);
                     }
                 };
             } else { 
@@ -329,15 +329,23 @@
             }
         }
 
-        /** --- 核心修改：使用 Space ID 與 PicNo 雙重比對 --- **/
-        async function fetchAndDrawMarker(targetSpaceNo, targetPicNo) {
-            console.log(`[Debug] 正在查詢標記: 圖片=${targetPicNo}, 編號=${targetSpaceNo}`);
+        /** --- 核心修改：依據校區動態決定查詢條件 --- **/
+        async function fetchAndDrawMarker(targetSpaceNo, targetPicNo, targetCampusNo) {
+            console.log(`[Debug] 正在查詢標記: 校區=${targetCampusNo}, 圖片=${targetPicNo}, 編號=${targetSpaceNo}`);
 
-            const { data, error } = await supabaseClient
+            // 預設查詢：比對 Space ID (classroom_name) 與 CampusNo (campus_no)
+            let query = supabaseClient
                 .from('classroom_markers')
                 .select('*')
-                .eq('classroom_name', targetSpaceNo) // 比對教室編號
-                .eq('image_name', targetPicNo)     // 比對圖片名稱 (PicNo)
+                .eq('classroom_name', targetSpaceNo)
+                .eq('campus_no', String(targetCampusNo));
+
+            // 如果是建國校區 (3)，則額外增加圖片名稱比對
+            if (String(targetCampusNo) === '3') {
+                query = query.eq('image_name', targetPicNo);
+            }
+
+            const { data, error } = await query
                 .order('created_at', { ascending: false }) 
                 .limit(1);
 
@@ -364,7 +372,7 @@
                 wrap.appendChild(dot);
                 wrap.appendChild(lbl);
             } else {
-                console.warn(`[Warn] 找不到符合標記。條件: 圖片(${targetPicNo}) + 編號(${targetSpaceNo})`);
+                console.warn(`[Warn] 找不到符合標記。校區:${targetCampusNo}, 圖片:${targetPicNo}, 編號:${targetSpaceNo}`);
             }
         }
 
