@@ -314,7 +314,7 @@
 
         function getParam(n) { return new URLSearchParams(window.location.search).get(n); }
 
-        /** --- 切換視角邏輯 --- **/
+        /** --- 切換視角邏輯 (加入中央與介仁校區大樓判斷) --- **/
         function switchView(mode) {
             if (!globalData) return;
             currentView = mode;
@@ -327,7 +327,28 @@
                 if (pic.includes("E+") || pic.includes(".")) pic = globalData.SpaceName;
                 loadAndDisplayImage(pic, true); // 顯示標記
             } else {
-                const campusPic = `campus_${globalData.CampusNo}`;
+                let campusPic = `campus_${globalData.CampusNo}`;
+                
+                const rawBld = String(globalData.BuildingNo || "").toUpperCase();
+
+                // --- 中央校區 (1) 特殊處理 ---
+                if (String(globalData.CampusNo) === '1') {
+                    const validBuildings1 = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'T'];
+                    if (validBuildings1.includes(rawBld)) {
+                        campusPic = `1${rawBld}pic`; // 組合出 1Apic
+                    }
+                }
+                // --- 介仁校區 (2) 特殊處理 ---
+                else if (String(globalData.CampusNo) === '2') {
+                    // 自動把可能夾帶的 '2' 去掉 (如 '2A' 變成 'A')
+                    const cleanBld = rawBld.replace(/^2/, ''); 
+                    const validBuildings2 = ['A', 'B', 'C', 'D', 'E', 'G', 'H'];
+                    
+                    if (validBuildings2.includes(cleanBld)) {
+                        campusPic = `2${cleanBld}pic`; // 組合出 2Apic
+                    }
+                }
+                
                 loadAndDisplayImage(campusPic, false); // 不顯示標記
             }
         }
@@ -360,7 +381,7 @@
                     wrap.appendChild(img); 
                     enableImageZoom(); 
                     if (showMarkers) {
-                        // 呼叫新的三重判斷邏輯，並傳入 CampusNo
+                        // 呼叫新的三重判斷邏輯
                         fetchAndDrawMarker(globalData.SpaceNo, picName, globalData.CampusNo);
                     }
                 };
