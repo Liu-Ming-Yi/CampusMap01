@@ -110,8 +110,8 @@
         }
         .search-bar input:focus { border-color: var(--tech-blue); box-shadow: 0 0 0 3px var(--neon-glow); }
         
-        .search-bar button { 
-            padding: 10px 20px; border-radius: 8px; border: none; 
+        .search-bar button:not(.filter-toggle-btn) {
+            padding: 10px 20px; border-radius: 8px; border: none;
             background: linear-gradient(135deg, var(--tech-blue) 0%, #b300ad 100%);
             color: white; cursor: pointer; font-weight: 600;
             box-shadow: 0 4px 10px rgba(0,86,179,0.3); transition: 0.3s;
@@ -157,11 +157,145 @@
             background: #cfc9be; color: #ff0d01; border: 1px solid #ff8400;
         }
 
-        .floating-header-container { 
-            position: fixed; top: 0; z-index: 100; overflow: hidden; 
+        .floating-header-container {
+            position: fixed; top: 0; z-index: 100; overflow: hidden;
             background: var(--glass-bg); backdrop-filter: blur(8px);
             display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border-bottom: 1px solid var(--tech-blue);
+        }
+
+        /* ===== Font size toggle button ===== */
+        .font-size-btn { font-weight: 800; font-size: 1rem !important; letter-spacing: -0.5px; }
+
+        /* ===== Font size levels ===== */
+        /* --- Medium (+15%) --- */
+        body.font-md td, body.font-md .detail-value { font-size: 1.05rem; }
+        body.font-md .m-card-name { font-size: 1.1rem; }
+        body.font-md .m-card-sub, body.font-md .m-card-id { font-size: 0.92rem; }
+        body.font-md .detail-label { font-size: 0.92rem; }
+        body.font-md .search-bar input, body.font-md .search-bar select { font-size: 1rem; }
+        body.font-md .card-name { font-size: 1.1rem; }
+        body.font-md .card-sub { font-size: 0.92rem; }
+
+        /* --- Large (+30%) --- */
+        body.font-lg td, body.font-lg .detail-value { font-size: 1.15rem; }
+        body.font-lg .m-card-name { font-size: 1.25rem; }
+        body.font-lg .m-card-sub, body.font-lg .m-card-id { font-size: 1.02rem; }
+        body.font-lg .detail-label { font-size: 1rem; }
+        body.font-lg .search-bar input, body.font-lg .search-bar select { font-size: 1.1rem; }
+        body.font-lg .card-name { font-size: 1.2rem; }
+        body.font-lg .card-sub { font-size: 1rem; }
+        body.font-lg .m-card { padding: 14px 16px; }
+        body.font-lg .detail-item { padding: 13px 14px; }
+
+        /* ===== Stat tag icons ===== */
+        .stat-icon { display: none; font-style: normal; }
+        .stat-label { display: inline; }
+
+        /* ===== Welcome bottom sheet (mobile) ===== */
+        .welcome-backdrop {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45); z-index: 8998;
+            backdrop-filter: blur(2px);
+        }
+        .welcome-backdrop.show { display: block; }
+        .welcome-sheet {
+            position: fixed; bottom: -100%; left: 0; right: 0;
+            background: var(--card-bg); z-index: 8999;
+            border-radius: 20px 20px 0 0;
+            border-top: 1px solid var(--border-color);
+            padding: 12px 20px 36px;
+            box-shadow: 0 -8px 32px rgba(0,0,0,0.18);
+            transition: bottom 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .welcome-sheet.show { bottom: 0; }
+        .welcome-handle {
+            width: 36px; height: 4px; border-radius: 2px;
+            background: var(--border-color); margin: 0 auto 16px;
+        }
+        .welcome-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 18px; }
+        .welcome-tips { display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px; }
+        .welcome-tip { display: flex; align-items: flex-start; gap: 12px; }
+        .tip-icon { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
+        .tip-desc { font-size: 0.82rem; color: var(--text-second, #718096); margin-top: 2px; }
+        .welcome-btn {
+            width: 100%; padding: 13px; border-radius: 10px; border: none;
+            background: linear-gradient(135deg, var(--tech-blue) 0%, #b300ad 100%);
+            color: white; font-size: 1rem; font-weight: 700; cursor: pointer;
+        }
+
+        /* ===== RWD Mobile ===== */
+        .search-bar-row { display: flex; gap: 10px; flex-wrap: nowrap; align-items: center; }
+        .filter-collapse-panel { display: flex; gap: 10px; flex-wrap: wrap; }
+        .filter-toggle-btn {
+            display: none;
+            padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border-color);
+            background: var(--card-bg); color: var(--text-main); cursor: pointer;
+            font-size: 1rem; transition: all 0.2s; flex-shrink: 0;
+        }
+        .filter-toggle-btn.active { border-color: var(--tech-blue); background: var(--tech-blue); color: white; }
+
+        /* Mobile cards */
+        .mobile-cards { display: none; }
+        .m-card {
+            background: var(--card-bg); border-radius: 10px; padding: 12px 14px;
+            margin-bottom: 8px; border-left: 3px solid var(--tech-blue);
+            cursor: pointer; transition: background 0.1s;
+        }
+        .m-card:active { background: var(--table-head); }
+        .m-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .m-card-name { color: var(--tech-blue); font-size: 0.95rem; font-weight: bold; }
+        .m-card-id { color: #718096; font-size: 0.8rem; }
+        .m-card-sub { color: #718096; font-size: 0.8rem; }
+        .m-card.highlight-row { border-left-color: #f6ad55; }
+        .m-card.highlight-row .m-card-name { color: #dd6b20; }
+
+        /* sticky top bar (desktop: no effect) */
+        .sticky-top-bar { background: var(--bg-color); }
+
+        /* mobile pinned card */
+        .mobile-pinned-card { display: none; }
+        .pinned-label { font-size: 0.7rem; color: #718096; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+        .m-card.pinned { border-left-color: #f6ad55; box-shadow: 0 2px 8px rgba(246,173,85,0.2); }
+        body.dark-mode .m-card.pinned { box-shadow: 0 2px 8px rgba(246,173,85,0.15); }
+
+        @media (max-width: 640px) {
+            .main-content-wrapper { padding: 0 12px; margin: 12px auto; }
+
+            .sticky-top-bar {
+                position: sticky;
+                top: 0;
+                z-index: 40;
+                padding-bottom: 6px;
+                margin-bottom: 4px;
+            }
+            .mobile-pinned-card { display: block; }
+            .mobile-pinned-card:empty { display: none; }
+
+            .header-bar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+            .header-bar h1 { font-size: 1rem; }
+            .header-logo { height: 30px; }
+            /* 手機：隱藏文字標籤，改用 icon */
+            .stat-label { display: none; }
+            .stat-icon { display: inline; }
+            .stat-tag { font-size: 0.85rem; padding: 4px 7px; gap: 3px; }
+
+            .search-bar { flex-direction: column; gap: 8px; margin-bottom: 0; }
+            .search-bar-row { width: 100%; }
+            .search-bar-row input { flex: 1; min-width: 0; }
+            .filter-toggle-btn { display: flex; align-items: center; justify-content: center; }
+
+            .filter-collapse-panel {
+                overflow: hidden; max-height: 0;
+                transition: max-height 0.3s ease;
+                flex-direction: row; gap: 8px;
+            }
+            .filter-collapse-panel.open { max-height: 60px; }
+            .filter-collapse-panel select { flex: 1; min-width: 0; }
+
+            .table-container { display: none; }
+            .mobile-cards { display: block; }
+            .floating-header-container { display: none !important; }
         }
     </style>
 </head>
@@ -190,24 +324,35 @@
             </h1>
             <div style="display: flex; gap: 12px; align-items: center;">
                 <div id="tour-restart" class="icon-btn-circle" title="顯示幫助教學">💡</div>
+                <div id="font-size-toggle" class="icon-btn-circle font-size-btn" title="調整字體大小">A</div>
                 <div id="lang-toggle" class="icon-btn-circle" title="Switch Language">EN</div>
                 <div id="theme-toggle" class="icon-btn-circle" title="切換深淺模式">
                     <span id="theme-icon">🌙</span>
                 </div>
-                <div class="stat-tag"><span id="ui-online-label">在線人數</span>: <span id="online-count" style="color:var(--tech-blue); margin-left:5px;">1</span></div>
-                <div class="stat-tag"><span id="ui-visit-label">瀏覽人數</span>: <span id="visit-total" style="margin-left:5px;">...</span></div>
+                <div class="stat-tag"><span class="stat-icon">👤</span><span class="stat-label"><span id="ui-online-label">在線人數</span>: </span><span id="online-count" style="color:var(--tech-blue);">1</span></div>
+                <div class="stat-tag"><span class="stat-icon">👁</span><span class="stat-label"><span id="ui-visit-label">瀏覽人數</span>: </span><span id="visit-total">...</span></div>
             </div>
         </div>
 
         <div id="status" style="font-size: 0.8rem; color: #718096; margin-bottom: 10px;">SYSTEM READY</div>
 
-        <div class="search-bar">
-            <input type="text" id="search-input" placeholder="搜尋關鍵字或編號..." />
-            <select id="campus-filter"></select>
-            <select id="building-filter"></select>
-            <button id="search-btn">搜尋空間</button>
-            <button id="reset-btn" style="display:none; background: #32b42d;">RESET</button>
+        <div class="sticky-top-bar">
+            <div class="search-bar">
+                <div class="search-bar-row">
+                    <input type="text" id="search-input" placeholder="搜尋關鍵字或編號..." />
+                    <button id="filter-toggle-btn" class="filter-toggle-btn" title="篩選">⚙️</button>
+                    <button id="search-btn">搜尋空間</button>
+                    <button id="reset-btn" style="display:none; background: #32b42d;">RESET</button>
+                </div>
+                <div class="filter-collapse-panel" id="filter-collapse-panel">
+                    <select id="campus-filter"></select>
+                    <select id="building-filter"></select>
+                </div>
+            </div>
+            <div id="mobile-pinned-card" class="mobile-pinned-card"></div>
         </div>
+
+        <div id="mobile-cards" class="mobile-cards"></div>
 
         <div class="table-container" id="table-container">
             <table id="space-table">
@@ -227,6 +372,19 @@
     <a id="back-to-top" href="javascript:window.scrollTo({top:0, behavior:'smooth'});">
         <svg style="width:24px;height:24px" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
     </a>
+
+    <!-- Mobile welcome bottom sheet -->
+    <div id="welcome-backdrop" class="welcome-backdrop"></div>
+    <div id="welcome-sheet" class="welcome-sheet">
+        <div class="welcome-handle"></div>
+        <div class="welcome-title" id="ws-title">🦋 快速上手</div>
+        <div class="welcome-tips">
+            <div class="welcome-tip"><span class="tip-icon">🔍</span><div><strong id="ws-t1">搜尋</strong><div id="ws-d1" class="tip-desc">輸入空間名稱或編號直接查找</div></div></div>
+            <div class="welcome-tip"><span class="tip-icon">⚙️</span><div><strong id="ws-t2">篩選</strong><div id="ws-d2" class="tip-desc">點擊 ⚙️ 展開，依校區或樓棟過濾</div></div></div>
+            <div class="welcome-tip"><span class="tip-icon">📍</span><div><strong id="ws-t3">查看位置</strong><div id="ws-d3" class="tip-desc">點空間名稱可查看平面圖與標記</div></div></div>
+        </div>
+        <button class="welcome-btn" id="welcome-dismiss">開始使用</button>
+    </div>
 
     <script src="./config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -259,7 +417,10 @@
                     nextBtn.onclick = (e) => { e.stopPropagation(); this.next(); };
                     skipBtn.onclick = (e) => { e.stopPropagation(); this.finish(); };
                     if (localStorage.getItem('tcu_tour_done') === 'true') return;
-                    setTimeout(() => { this.start(); }, 1200);
+                    setTimeout(() => {
+                        if (window.innerWidth <= 640) { showWelcomeSheet(); }
+                        else { this.start(); }
+                    }, 1200);
                 },
                 start() {
                     document.getElementById('tour-overlay').style.display = 'block';
@@ -325,7 +486,10 @@
                     allCampus: '-- 所有校區 --', allBld: '-- 所有樓棟 --', bldUnit: ' 棟',
                     campusMap: { '1': '中央校區', '2': '介仁校區', '3': '建國校區' },
                     colNames: { 'SpaceNo': '空間編號', 'SpaceName': '空間名稱', 'CampusNo': '校區', 'BuildingNo': '樓棟', 'FloorNo': '樓層', 'PicNo': '圖號' },
-                    floorUnit: ' 樓', systemReady: '系統就緒', other: '其他'
+                    floorUnit: ' 樓', systemReady: '系統就緒', other: '其他', resetBtn: '清除',
+                    wsTitle: '🦋 快速上手', wsT1: '搜尋', wsD1: '輸入空間名稱或編號直接查找',
+                    wsT2: '篩選', wsD2: '點擊 ⚙️ 展開，依校區或樓棟過濾',
+                    wsT3: '查看位置', wsD3: '點空間名稱可查看平面圖與標記', wsBtn: '開始使用'
                 },
                 en: {
                     mainTitle: 'Campus Wayfinding <span style="color:var(--tech-blue)">TCU Map</span>',
@@ -334,7 +498,10 @@
                     allCampus: '-- All Campus --', allBld: '-- All Buildings --', bldUnit: ' Bld',
                     campusMap: { '1': 'Main Campus', '2': 'Jieren Campus', '3': 'Jianguo Campus' },
                     colNames: { 'SpaceNo': 'Space ID', 'SpaceName': 'Name', 'CampusNo': 'Campus', 'BuildingNo': 'Building', 'FloorNo': 'Floor', 'PicNo': 'Pic ID' },
-                    floorUnit: 'F', systemReady: 'SYSTEM READY', other: 'Other'
+                    floorUnit: 'F', systemReady: 'SYSTEM READY', other: 'Other', resetBtn: 'RESET',
+                    wsTitle: '🦋 Quick Start', wsT1: 'Search', wsD1: 'Type space name or ID to find quickly',
+                    wsT2: 'Filter', wsD2: 'Tap ⚙️ to filter by campus or building',
+                    wsT3: 'View Location', wsD3: 'Tap a space name to see its floor plan', wsBtn: 'Get Started'
                 }
             };
 
@@ -380,7 +547,17 @@
                         document.getElementById('status').textContent = dict.systemReady;
                         document.getElementById('search-input').placeholder = dict.searchPlh;
                         document.getElementById('search-btn').textContent = dict.searchBtn;
+                        document.getElementById('reset-btn').textContent = dict.resetBtn;
                         langBtn.textContent = this.lang === 'zh' ? 'EN' : '中文';
+                        // Update welcome sheet text
+                        document.getElementById('ws-title').textContent = dict.wsTitle;
+                        document.getElementById('ws-t1').textContent = dict.wsT1;
+                        document.getElementById('ws-d1').textContent = dict.wsD1;
+                        document.getElementById('ws-t2').textContent = dict.wsT2;
+                        document.getElementById('ws-d2').textContent = dict.wsD2;
+                        document.getElementById('ws-t3').textContent = dict.wsT3;
+                        document.getElementById('ws-d3').textContent = dict.wsD3;
+                        document.getElementById('welcome-dismiss').textContent = dict.wsBtn;
                         this.renderFilters();
                         if (this.currentData.length > 0) this.sortAndRender();
                         Onboarding.lang = this.lang;
@@ -473,7 +650,34 @@
                     };
                     document.getElementById("table-head-row").onclick = sortClick;
                     document.getElementById("floating-thead").onclick = sortClick;
-                    document.getElementById('tour-restart').onclick = () => { localStorage.removeItem('tcu_tour_done'); Onboarding.currentStep = 0; Onboarding.start(); };
+                    // Font size toggle
+                    const fontSizes = ['', 'font-md', 'font-lg'];
+                    const fontLabels = ['A', 'A+', 'A++'];
+                    let fontIdx = fontSizes.indexOf(localStorage.getItem('font-size') || '');
+                    if (fontIdx < 0) fontIdx = 0;
+                    const applyFontSize = () => {
+                        document.body.classList.remove('font-md', 'font-lg');
+                        if (fontSizes[fontIdx]) document.body.classList.add(fontSizes[fontIdx]);
+                        document.getElementById('font-size-toggle').textContent = fontLabels[fontIdx];
+                        localStorage.setItem('font-size', fontSizes[fontIdx]);
+                    };
+                    applyFontSize();
+                    document.getElementById('font-size-toggle').onclick = () => {
+                        fontIdx = (fontIdx + 1) % fontSizes.length;
+                        applyFontSize();
+                    };
+
+                    document.getElementById('filter-toggle-btn').onclick = () => {
+                        const panel = document.getElementById('filter-collapse-panel');
+                        const btn = document.getElementById('filter-toggle-btn');
+                        panel.classList.toggle('open');
+                        btn.classList.toggle('active');
+                    };
+                    document.getElementById('tour-restart').onclick = () => {
+                        localStorage.removeItem('tcu_tour_done');
+                        if (window.innerWidth <= 640) { showWelcomeSheet(); }
+                        else { Onboarding.currentStep = 0; Onboarding.start(); }
+                    };
                     window.onscroll = () => {
                         const t = document.getElementById("space-table"), fc = document.getElementById("floating-header-container"), 
                               tr = t.getBoundingClientRect(), mc = document.getElementById("table-container"), 
@@ -556,6 +760,48 @@
                     document.getElementById("space-tbody").innerHTML = rows;
                     document.getElementById("floating-pinned-tbody").innerHTML = pinnedHTML;
                     document.getElementById('reset-btn').style.display = 'inline-block';
+
+                    // Mobile pinned card (highlighted item)
+                    const pinnedContainer = document.getElementById('mobile-pinned-card');
+                    if (this.highlightID) {
+                        const pinnedRow = this.currentData.find(r => String(r.sID) === this.highlightID);
+                        if (pinnedRow) {
+                            const pCampus = dict.campusMap[pinnedRow.CampusNo] || pinnedRow.CampusNo || "";
+                            const pBMap = BUILDING_NAMES_I18N[this.lang][pinnedRow.CampusNo];
+                            const pBNo = String(pinnedRow.BuildingNo || "");
+                            const pBName = pBMap ? (pBMap[pBNo] || pBMap[pBNo.replace(/^2/,'')] || `${pBNo}${dict.bldUnit}`) : (pBNo ? `${pBNo}${dict.bldUnit}` : "");
+                            const pFloor = pinnedRow.FloorNo ? `${pinnedRow.FloorNo}${dict.floorUnit}` : "";
+                            const pUrl = pinnedRow.PicNo ? `Details.html?sID=${pinnedRow.sID}&keyword=${encodeURIComponent(document.getElementById('search-input').value)}` : '#';
+                            pinnedContainer.innerHTML = `
+                                <div class="pinned-label">📌 上次查看</div>
+                                <div class="m-card pinned" onclick="location.href='${pUrl}'">
+                                    <div class="m-card-top">
+                                        <span class="m-card-name" style="color:#dd6b20">${pinnedRow.SpaceName || ''}</span>
+                                        <span class="m-card-id">${pinnedRow.SpaceNo || ''}</span>
+                                    </div>
+                                    <div class="m-card-sub">${pCampus} · ${pBName}${pFloor ? ' · ' + pFloor : ''}</div>
+                                </div>`;
+                        } else { pinnedContainer.innerHTML = ''; }
+                    } else { pinnedContainer.innerHTML = ''; }
+
+                    // Mobile card rendering
+                    const cards = this.currentData.map(row => {
+                        const isP = String(row.sID) === this.highlightID;
+                        let campus = dict.campusMap[row.CampusNo] || row.CampusNo || "";
+                        const bMap = BUILDING_NAMES_I18N[this.lang][row.CampusNo];
+                        const bNo = String(row.BuildingNo || "");
+                        const bName = bMap ? (bMap[bNo] || bMap[bNo.replace(/^2/,'')] || `${bNo}${dict.bldUnit}`) : (bNo ? `${bNo}${dict.bldUnit}` : "");
+                        const floor = row.FloorNo ? `${row.FloorNo}${dict.floorUnit}` : "";
+                        const url = row.PicNo ? `Details.html?sID=${row.sID}&keyword=${encodeURIComponent(document.getElementById('search-input').value)}` : '#';
+                        return `<div class="m-card${isP ? ' highlight-row' : ''}" onclick="location.href='${url}'">
+                            <div class="m-card-top">
+                                <span class="m-card-name">${row.SpaceName || ''}</span>
+                                <span class="m-card-id">${row.SpaceNo || ''}</span>
+                            </div>
+                            <div class="m-card-sub">${campus} · ${bName}${floor ? ' · ' + floor : ''}</div>
+                        </div>`;
+                    }).join('');
+                    document.getElementById('mobile-cards').innerHTML = cards || `<div style="text-align:center;color:#718096;padding:20px">找不到符合的空間</div>`;
                 },
 
                 loadFromURL() {
@@ -565,6 +811,22 @@
                     document.getElementById('search-input').value = kw;
                 }
             };
+            // ===== Welcome sheet logic =====
+            function showWelcomeSheet() {
+                const sheet = document.getElementById('welcome-sheet');
+                const backdrop = document.getElementById('welcome-backdrop');
+                sheet.classList.add('show');
+                backdrop.classList.add('show');
+            }
+            function dismissWelcomeSheet() {
+                document.getElementById('welcome-sheet').classList.remove('show');
+                document.getElementById('welcome-backdrop').classList.remove('show');
+                localStorage.setItem('tcu_tour_done', 'true');
+            }
+            document.getElementById('welcome-dismiss').onclick = dismissWelcomeSheet;
+            document.getElementById('welcome-backdrop').onclick = dismissWelcomeSheet;
+            window.showWelcomeSheet = showWelcomeSheet;
+
             app.init();
         });
     </script>
