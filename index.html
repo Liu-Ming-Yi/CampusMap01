@@ -373,7 +373,6 @@
         <svg style="width:24px;height:24px" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
     </a>
 
-    <!-- Mobile welcome bottom sheet -->
     <div id="welcome-backdrop" class="welcome-backdrop"></div>
     <div id="welcome-sheet" class="welcome-sheet">
         <div class="welcome-handle"></div>
@@ -467,14 +466,15 @@
                 }
             };
 
+            // --- 更新後的字典檔：符合使用者指定選項 ---
             const BUILDING_NAMES_I18N = {
                 zh: {
-                    "1": { "A": "和敬樓 A 棟", "B": "和敬樓 B 棟", "C": "和敬樓 C 棟", "D": "勤耕樓 D 棟", "E": "勤耕樓 E 棟", "F": "大捨樓 F 棟", "H": "福田樓 H 棟", "L": "大愛樓 L 棟", "T": "大喜館 T 棟" },
-                    "2": { "A": "合心樓 2A 棟", "B": "文心樓 2B 棟", "C": "立心樓 2C 棟", "D": "知心樓 2D 棟", "E": "明心樓 2E 棟", "G": "體育館 2G 棟", "H": "活動中心 2H 棟" }
+                    "1": { "A": "A棟 (和敬樓)", "B": "B棟 (和敬樓)", "C": "C棟 (和敬樓)", "D": "D棟 (勤耕樓)", "E": "E棟 (勤耕樓)", "F": "F棟 (大捨樓)", "H": "H棟 (福田樓)", "T": "T棟 (大喜館)" },
+                    "2": { "A": "2A (合心樓)", "B": "2B (文心樓)", "C": "2C (立心樓)", "D": "2D (知心樓)", "E": "2E (明心樓)", "G": "2G (體育館/活動中心)" }
                 },
                 en: {
-                    "1": { "A": "Hejing Bldg A", "B": "Hejing Bldg B", "C": "Hejing Bldg C", "D": "Qingeng Bldg D", "E": "Qingeng Bldg E", "F": "Dashe Bldg F", "H": "Futian Bldg H", "L": "Daai Bldg L", "T": "Daxi Bldg T" },
-                    "2": { "A": "Hexin Bldg 2A", "B": "Wenxin Bldg 2B", "C": "Lixin Bldg 2C", "D": "Zhixin Bldg 2D", "E": "Mingxin Bldg 2E", "G": "Gym 2G", "H": "Activity 2H" }
+                    "1": { "A": "Bldg A (Hejing)", "B": "Bldg B (Hejing)", "C": "Bldg C (Hejing)", "D": "Bldg D (Qingeng)", "E": "Bldg E (Qingeng)", "F": "Bldg F (Dashe)", "H": "Bldg H (Futian)", "T": "Bldg T (Daxi)" },
+                    "2": { "A": "Bldg 2A (Hexin)", "B": "Bldg 2B (Wenxin)", "C": "Bldg 2C (Lixin)", "D": "Bldg 2D (Zhixin)", "E": "Bldg 2E (Mingxin)", "G": "Bldg 2G (Gym/Activity Center)" }
                 }
             };
 
@@ -549,7 +549,7 @@
                         document.getElementById('search-btn').textContent = dict.searchBtn;
                         document.getElementById('reset-btn').textContent = dict.resetBtn;
                         langBtn.textContent = this.lang === 'zh' ? 'EN' : '中文';
-                        // Update welcome sheet text
+                        
                         document.getElementById('ws-title').textContent = dict.wsTitle;
                         document.getElementById('ws-t1').textContent = dict.wsT1;
                         document.getElementById('ws-d1').textContent = dict.wsD1;
@@ -599,17 +599,25 @@
                     this.renderBuildings(savedVal);
                 },
 
+                // --- 修改這裡：套用使用者指定的樓棟篩選選項 ---
                 renderBuildings(campusNo) {
                     const dict = I18N_DICT[this.lang];
                     let b = `<option value="">${dict.allBld}</option>`;
                     const addOption = (val, text) => b += `<option value="${val}">${text}</option>`;
+                    
                     if (!campusNo) {
                         for (let i = 65; i <= 90; i++) { const char = String.fromCharCode(i); addOption(char, `${char}${dict.bldUnit}`); }
                     } else if (campusNo === '1') {
-                        for (let i = 65; i <= 84; i++) { const char = String.fromCharCode(i); addOption(char, `${char}${dict.bldUnit}`); }
+                        // 中央校區: 僅顯示 A, B, C, D, E, F, H, T
+                        const blds1 = ['A', 'B', 'C', 'D', 'E', 'F', 'H', 'T'];
+                        const names1 = BUILDING_NAMES_I18N[this.lang]["1"];
+                        blds1.forEach(c => addOption(c, names1[c]));
                         addOption('other', dict.other);
                     } else if (campusNo === '2') {
-                        for (let i = 65; i <= 72; i++) { const char = String.fromCharCode(i); addOption(char, `${char}${dict.bldUnit}`); }
+                        // 介仁校區: 僅顯示 A, B, C, D, E, G
+                        const blds2 = ['A', 'B', 'C', 'D', 'E', 'G'];
+                        const names2 = BUILDING_NAMES_I18N[this.lang]["2"];
+                        blds2.forEach(c => addOption(c, names2[c]));
                         addOption('other', dict.other);
                     } else if (campusNo === '3') {
                         for (let i = 65; i <= 75; i++) { const char = String.fromCharCode(i); addOption(char, `${char}${dict.bldUnit}`); }
@@ -624,7 +632,6 @@
                     document.getElementById('search-btn').onclick = triggerSearch;
                     document.getElementById('search-input').onkeypress = (e) => { if (e.key === 'Enter') triggerSearch(); };
                     
-                    // 下拉選單更動時即時篩選結果
                     document.getElementById('campus-filter').onchange = (e) => {
                         this.renderBuildings(e.target.value);
                         triggerSearch();
@@ -650,7 +657,7 @@
                     };
                     document.getElementById("table-head-row").onclick = sortClick;
                     document.getElementById("floating-thead").onclick = sortClick;
-                    // Font size toggle
+                    
                     const fontSizes = ['', 'font-md', 'font-lg'];
                     const fontLabels = ['A', 'A+', 'A++'];
                     let fontIdx = fontSizes.indexOf(localStorage.getItem('font-size') || '');
@@ -695,27 +702,22 @@
                     const bld = document.getElementById('building-filter').value;
                     let q = this.supabase.from("TblSpace").select('*');
                     
-                    // 1. 處理關鍵字 (符合名稱或編號)
                     if (kw) q = q.or(`SpaceName.ilike.%${kw}%,SpaceNo.ilike.%${kw}%`);
                     
-                    // 2. 處理校區篩選
                     if (camp) q = q.eq('CampusNo', camp);
                     
-                    // 3. 處理樓棟篩選 (包含邏輯判斷)
                     if (bld) {
                         if (bld === 'other') {
-                            // 排除規則：排除 A, B, C... 等已知代碼
+                            // --- 修改這裡：根據新名單調整「其他」所排除的條件 ---
                             let excludeList = [];
-                            if (camp === '1') excludeList = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T'];
-                            else if (camp === '2') excludeList = ['2A','2B','2C','2D','2E','2F','2G','2H'];
+                            if (camp === '1') excludeList = ['A','B','C','D','E','F','H','T'];
+                            else if (camp === '2') excludeList = ['A','B','C','D','E','G','2A','2B','2C','2D','2E','2G'];
                             else if (camp === '3') excludeList = ['A','B','C','D','E','F','G','H','I','J','K','Lib'];
                             
                             if (excludeList.length > 0) {
-                                // Supabase 語法：排除在陣列中的代碼
                                 q = q.not('BuildingNo', 'in', `(${excludeList.join(',')})`);
                             }
                         } else {
-                            // 單一樓棟搜尋 (相容 2A 這種前綴)
                             q = q.or(`BuildingNo.eq.${bld},BuildingNo.eq.2${bld}`);
                         }
                     }
@@ -761,7 +763,6 @@
                     document.getElementById("floating-pinned-tbody").innerHTML = pinnedHTML;
                     document.getElementById('reset-btn').style.display = 'inline-block';
 
-                    // Mobile pinned card (highlighted item)
                     const pinnedContainer = document.getElementById('mobile-pinned-card');
                     if (this.highlightID) {
                         const pinnedRow = this.currentData.find(r => String(r.sID) === this.highlightID);
@@ -784,7 +785,6 @@
                         } else { pinnedContainer.innerHTML = ''; }
                     } else { pinnedContainer.innerHTML = ''; }
 
-                    // Mobile card rendering
                     const cards = this.currentData.map(row => {
                         const isP = String(row.sID) === this.highlightID;
                         let campus = dict.campusMap[row.CampusNo] || row.CampusNo || "";
@@ -811,7 +811,7 @@
                     document.getElementById('search-input').value = kw;
                 }
             };
-            // ===== Welcome sheet logic =====
+            
             function showWelcomeSheet() {
                 const sheet = document.getElementById('welcome-sheet');
                 const backdrop = document.getElementById('welcome-backdrop');
