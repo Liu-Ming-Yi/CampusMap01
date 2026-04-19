@@ -164,6 +164,40 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
 
+        /* ===== Font size levels ===== */
+        body.font-md .detail-value { font-size: 1.2rem; }
+        body.font-md .detail-label { font-size: 0.92rem; }
+        body.font-md h1 { font-size: 1.75rem; }
+        body.font-lg .detail-value { font-size: 1.35rem; }
+        body.font-lg .detail-label { font-size: 1rem; }
+        body.font-lg h1 { font-size: 1.95rem; }
+
+        /* ===== RWD Mobile — Layout B (圖優先) ===== */
+        @media (max-width: 640px) {
+            body { padding: 10px; }
+            .container { padding: 14px; border-radius: 10px; }
+
+            .header-container { padding-bottom: 12px; margin-bottom: 14px; }
+            h1 { font-size: 1rem; letter-spacing: 0; }
+            #back-button { padding: 7px 12px; font-size: 0.8rem; }
+
+            /* Layout B: switcher → map → info */
+            #details-content { display: flex; flex-direction: column; }
+            .view-switcher { order: 1; margin-bottom: 12px; gap: 8px; }
+            .view-btn { padding: 8px 14px; font-size: 0.8rem; }
+            #image-container { order: 2; min-height: 200px; }
+            .info-grid { order: 3; margin-top: 14px; margin-bottom: 0; gap: 8px; grid-template-columns: 1fr; }
+
+            /* Compact info rows */
+            .detail-item {
+                flex-direction: row; justify-content: space-between; align-items: center;
+                padding: 10px 12px;
+            }
+            .detail-item:hover { transform: none; }
+            .detail-label { font-size: 0.75rem; }
+            .detail-value { font-size: 0.9rem; text-align: right; }
+        }
+
         /* --- 全螢幕縮放層 --- */
         .fullscreen-overlay { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
@@ -241,7 +275,13 @@
         function applyTheme() {
             if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
         }
+        function applyFontSize() {
+            const fs = localStorage.getItem('font-size') || '';
+            document.body.classList.remove('font-md', 'font-lg');
+            if (fs) document.body.classList.add(fs);
+        }
         applyTheme();
+        applyFontSize();
 
         const I18N_DETAILS = {
             zh: {
