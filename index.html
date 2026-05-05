@@ -470,11 +470,13 @@
             const BUILDING_NAMES_I18N = {
                 zh: {
                     "1": { "A": "A棟 (和敬樓)", "B": "B棟 (和敬樓)", "C": "C棟 (和敬樓)", "D": "D棟 (勤耕樓)", "E": "E棟 (勤耕樓)", "F": "F棟 (大捨樓)", "H": "H棟 (福田樓)", "T": "T棟 (大喜館)" },
-                    "2": { "A": "2A (合心樓)", "B": "2B (文心樓)", "C": "2C (立心樓)", "D": "2D (知心樓)", "E": "2E (明心樓)", "G": "2G (體育館/活動中心)" }
+                    "2": { "A": "2A (合心樓)", "B": "2B (文心樓)", "C": "2C (立心樓)", "D": "2D (知心樓)", "E": "2E (明心樓)", "G": "2G (體育館/活動中心)" },
+                    "3": { "A": "A棟 (智慧樓)", "B": "B棟 (精進樓)", "C": "C棟 (圖書館)", "D": "D棟 (精進樓)", "E": "E棟 (精進樓)", "F": "F棟 (協力樓)", "K": "K棟 (智耕樓)" }
                 },
                 en: {
                     "1": { "A": "Bldg A (Hejing)", "B": "Bldg B (Hejing)", "C": "Bldg C (Hejing)", "D": "Bldg D (Qingeng)", "E": "Bldg E (Qingeng)", "F": "Bldg F (Dashe)", "H": "Bldg H (Futian)", "T": "Bldg T (Daxi)" },
-                    "2": { "A": "Bldg 2A (Hexin)", "B": "Bldg 2B (Wenxin)", "C": "Bldg 2C (Lixin)", "D": "Bldg 2D (Zhixin)", "E": "Bldg 2E (Mingxin)", "G": "Bldg 2G (Gym/Activity Center)" }
+                    "2": { "A": "Bldg 2A (Hexin)", "B": "Bldg 2B (Wenxin)", "C": "Bldg 2C (Lixin)", "D": "Bldg 2D (Zhixin)", "E": "Bldg 2E (Mingxin)", "G": "Bldg 2G (Gym/Activity Center)" },
+                    "3": { "A": "Bldg A (Zhihui)", "B": "Bldg B (Jingjin)", "C": "Bldg C (Library)", "D": "Bldg D (Jingjin)", "E": "Bldg E (Jingjin)", "F": "Bldg F (Xieli)", "K": "Bldg K (Zhigeng)" }
                 }
             };
 
@@ -620,8 +622,9 @@
                         blds2.forEach(c => addOption(c, names2[c]));
                         addOption('other', dict.other);
                     } else if (campusNo === '3') {
-                        for (let i = 65; i <= 75; i++) { const char = String.fromCharCode(i); addOption(char, `${char}${dict.bldUnit}`); }
-                        addOption('Lib', `Lib${dict.bldUnit}`);
+                        const blds3 = ['A', 'B', 'C', 'D', 'E', 'F', 'K'];
+                        const names3 = BUILDING_NAMES_I18N[this.lang]["3"];
+                        blds3.forEach(c => addOption(c, names3[c]));
                         addOption('other', dict.other);
                     }
                     document.getElementById('building-filter').innerHTML = b;
