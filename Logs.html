@@ -26,6 +26,37 @@
             transition: background-color 0.3s;
         }
         .container { max-width: 1000px; margin: 0 auto; }
+
+        /* === 登入畫面樣式 === */
+        .login-wrapper {
+            display: flex; justify-content: center; align-items: center;
+            min-height: 80vh;
+        }
+        .login-box {
+            background: var(--card-bg); padding: 40px; border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08); width: 320px;
+            border: 1px solid var(--border-color);
+        }
+        .login-box h1 { 
+            color: var(--tech-blue); margin: 0 0 20px 0; font-size: 1.3rem; 
+        }
+        .login-box input {
+            width: 100%; padding: 12px; margin-bottom: 12px;
+            border: 1px solid var(--border-color); border-radius: 8px; 
+            box-sizing: border-box; font-size: 0.95rem;
+            background: var(--bg-color); color: var(--text-main);
+        }
+        .login-box button {
+            width: 100%; padding: 12px; background: var(--tech-blue); color: white;
+            border: none; border-radius: 8px; font-size: 1rem; 
+            font-weight: 600; cursor: pointer;
+        }
+        .login-box button:hover { background: #0056b3; }
+        .err { color: #e53e3e; font-size: 0.85rem; margin-top: 10px; min-height: 20px; }
+        .back { display: block; text-align: center; margin-top: 15px; 
+                color: #64748b; text-decoration: none; font-size: 0.85rem; }
+
+        /* === Log 畫面樣式 === */
         .header {
             display: flex; justify-content: space-between; align-items: center;
             margin-bottom: 20px; background: var(--card-bg); padding: 20px;
@@ -38,12 +69,12 @@
             display: inline-flex; align-items: center; gap: 5px; margin-bottom: 10px;
         }
         .filter-box { margin-bottom: 20px; display: flex; gap: 10px; }
-        button {
+        button.filter-btn {
             padding: 10px 20px; border-radius: 8px; border: 1px solid var(--border-color);
             background: var(--card-bg); color: var(--text-main); cursor: pointer; 
             transition: all 0.3s; font-weight: 500;
         }
-        button.active { 
+        button.filter-btn.active { 
             background: var(--tech-blue); color: white; border-color: var(--tech-blue);
             box-shadow: 0 4px 10px rgba(0,123,255,0.3);
         }
@@ -72,6 +103,9 @@
             font-family: monospace;
         }
         #loading { text-align: center; padding: 50px; color: #94a3b8; font-style: italic; }
+
+        .hidden { display: none !important; }
+
         @media (max-width: 768px) {
             .log-item { grid-template-columns: 1fr; gap: 8px; }
             .log-time { color: var(--tech-blue); font-weight: bold; }
@@ -80,7 +114,22 @@
 </head>
 <body>
 
-<div class="container">
+<!-- ==================== 登入畫面 ==================== -->
+<div id="login-view" class="container hidden">
+    <div class="login-wrapper">
+        <div class="login-box">
+            <h1>🔒 內部人員登入</h1>
+            <input type="email" id="email" placeholder="Email" autocomplete="email">
+            <input type="password" id="password" placeholder="密碼" autocomplete="current-password">
+            <button onclick="doLogin()">登入</button>
+            <div class="err" id="err"></div>
+            <a href="index.html" class="back">← 返回地圖</a>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== Log 顯示畫面 ==================== -->
+<div id="logs-view" class="container hidden">
     <a href="index.html" class="back-link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         返回地圖查詢
@@ -92,13 +141,13 @@
             <p style="margin: 5px 0 0 0; font-size: 0.85rem; color: #64748b;">追蹤您的查詢歷史與系統操作</p>
         </div>
         <div id="user-info" style="text-align: right; font-size: 0.75rem; color: #64748b; background: #f1f5f9; padding: 8px; border-radius: 6px;">
-            驗證身份中...
+            驗證中...
         </div>
     </div>
 
     <div class="filter-box">
-        <button id="btn-mine" class="active">我的紀錄</button>
-        <button id="btn-all">全站即時日誌</button>
+        <button id="btn-mine" class="filter-btn active">我的紀錄</button>
+        <button id="btn-all" class="filter-btn">全站即時日誌</button>
     </div>
 
     <div id="log-list" class="log-list-container">
@@ -116,25 +165,59 @@
         document.body.classList.add('dark-mode');
     }
 
-    // 🔒 進頁面先檢查有沒有登入,沒有就踢去 login.html
-    (async () => {
-        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session) {
-            window.location.href = 'login.html';
-            return;
-        }
-        // 已登入 → 顯示 email + 登出按鈕
+    // === 切換畫面用 ===
+    function showLoginView() {
+        document.getElementById('login-view').classList.remove('hidden');
+        document.getElementById('logs-view').classList.add('hidden');
+    }
+    function showLogsView(session) {
+        document.getElementById('login-view').classList.add('hidden');
+        document.getElementById('logs-view').classList.remove('hidden');
         document.getElementById('user-info').innerHTML = 
             `<strong>已登入</strong><br>${session.user.email}
-             <br><a href="#" onclick="logout(); return false;" style="color:#e53e3e;">登出</a>`;
+             <br><a href="#" onclick="doLogout(); return false;" style="color:#e53e3e;">登出</a>`;
         fetchLogs(false);
+    }
+
+    // === 進頁面先檢查登入狀態 ===
+    (async () => {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            showLogsView(session);
+        } else {
+            showLoginView();
+        }
     })();
 
-    window.logout = async () => {
-        await supabaseClient.auth.signOut();
-        window.location.href = 'login.html';
+    // === 登入 ===
+    window.doLogin = async () => {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const errEl = document.getElementById('err');
+        errEl.textContent = '';
+
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) {
+            errEl.textContent = '登入失敗:' + error.message;
+            return;
+        }
+        showLogsView(data.session);
     };
 
+    // === 登出 ===
+    window.doLogout = async () => {
+        await supabaseClient.auth.signOut();
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+        showLoginView();
+    };
+
+    // === Enter 鍵送出 ===
+    document.getElementById('password').addEventListener('keypress', e => {
+        if (e.key === 'Enter') doLogin();
+    });
+
+    // === 抓 log ===
     async function fetchLogs(showAll = false) {
         const listContainer = document.getElementById('log-list');
         listContainer.innerHTML = '<div id="loading">正在擷取最新資料...</div>';
@@ -183,12 +266,12 @@
         }
     }
 
+    // === 切換按鈕 ===
     document.getElementById('btn-mine').onclick = function() {
         document.getElementById('btn-all').classList.remove('active');
         this.classList.add('active');
         fetchLogs(false);
     };
-
     document.getElementById('btn-all').onclick = function() {
         document.getElementById('btn-mine').classList.remove('active');
         this.classList.add('active');
