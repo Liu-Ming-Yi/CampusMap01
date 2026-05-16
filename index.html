@@ -513,6 +513,8 @@
 
                 async init() {
                     this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    this.getSessionId();                         // ← 新增:確保 session ID 存在
+                    this.logActivity('ENTER', '進入首頁');         // ← 新增:記錄進站
                     this.setupTheme(); 
                     this.setupLanguage(); 
                     this.setupOnlinePresence();
@@ -520,6 +522,35 @@
                     this.bindEvents();
                     this.loadFromURL();
                     Onboarding.init(this.lang);
+                },
+
+                // === 取得或建立 Session ID(每個瀏覽器各一組,永久) ===
+                getSessionId() {
+                    let sid = localStorage.getItem('tcu_user_id');
+                    if (!sid) {
+                        sid = 'tcu-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+                        localStorage.setItem('tcu_user_id', sid);
+                    }
+                    return sid;
+                },
+
+                // === 寫一筆 log(透過 RPC,失敗不影響使用者體驗) ===
+                async logActivity(actionType, details = '') {
+                    try {
+                        const sessionId = this.getSessionId();
+                        const eventTimeTw = new Date().toLocaleString('zh-TW', {
+                            timeZone: 'Asia/Taipei',
+                            hour12: false
+                        });
+                        await this.supabase.rpc('log_user_activity', {
+                            p_session_id: sessionId,
+                            p_action_type: actionType,
+                            p_details: String(details).slice(0, 500),
+                            p_event_time_tw: eventTimeTw
+                        });
+                    } catch (e) {
+                        console.debug('log skipped:', e && e.message);
+                    }
                 },
 
                 setupTheme() {
@@ -580,14 +611,18 @@
                     }).subscribe(async (status) => { if (status === 'SUBSCRIBED') await channel.track({ online_at: new Date().toISOString() }); });
                 },
 
+                // === 取得歷史總瀏覽人數(透過 RPC,不需要 daily_page_views) ===
                 async setupStats() {
                     try {
-                        const res = await fetch('https://api.ipify.org?format=json');
-                        const { ip } = await res.json();
-                        await this.supabase.from('daily_page_views').upsert({ ip_address: ip }, { onConflict: 'ip_address,view_date' });
-                        const { count, error } = await this.supabase.from('daily_page_views').select('*', { count: 'exact', head: true });
-                        if (!error) document.getElementById('visit-total').textContent = count || 0;
-                    } catch (e) { }
+                        const { data, error } = await this.supabase.rpc('get_visit_count');
+                        if (!error && data !== null) {
+                            document.getElementById('visit-total').textContent = data;
+                        } else {
+                            document.getElementById('visit-total').textContent = '-';
+                        }
+                    } catch (e) {
+                        document.getElementById('visit-total').textContent = '-';
+                    }
                 },
 
                 renderFilters() {
@@ -698,9 +733,34 @@
                             fc.style.left = mc.getBoundingClientRect().left + "px"; fc.style.scrollLeft = mc.scrollLeft;
                         } else { fc.style.display = "none"; }
                     };
+
+                    // === 新增:記錄使用者點擊空間連結(進 Details.html) ===
+                    const trackClick = (e) => {
+                        const link = e.target.closest('a[href^="Details.html"]');
+                        const card = e.target.closest('.m-card[onclick]');
+                        if (link) {
+                            // 桌面版:點表格內的連結
+                            const spaceName = link.textContent.trim();
+                            this.logActivity('CLICK_LINK', `查看空間: ${spaceName}`);
+                        } else if (card) {
+                            // 手機版:點 m-card
+                            const nameEl = card.querySelector('.m-card-name');
+                            const idEl = card.querySelector('.m-card-id');
+                            const spaceName = nameEl ? nameEl.textContent.trim() : '';
+                            const spaceId = idEl ? idEl.textContent.trim() : '';
+                            this.logActivity('CLICK_LINK', `查看空間: ${spaceName} (${spaceId})`);
+                        }
+                    };
+                    document.getElementById('space-tbody').addEventListener('click', trackClick);
+                    document.getElementById('mobile-cards').addEventListener('click', trackClick);
                 },
 
                 async fetchData(kw = "", hID = null) {
+                    // 新增:只記錄使用者主動搜尋,初始載入不記
+                    if (kw && kw.trim()) {
+                        this.logActivity('SEARCH', `關鍵字: ${kw.trim()}`);
+                    }
+
                     const camp = document.getElementById('campus-filter').value;
                     const bld = document.getElementById('building-filter').value;
                     let q = this.supabase.from("TblSpace").select('*');
